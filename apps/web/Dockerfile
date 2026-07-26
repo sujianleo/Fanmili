@@ -38,7 +38,8 @@ ENV NODE_ENV=production \
     NEXT_PUBLIC_FAMILY_APP_AUTH_PROVIDER=local \
     NEXT_PUBLIC_FAMILY_APP_BACKEND=sqlite
 
-RUN addgroup --system --gid 1001 nodejs \
+RUN apk add --no-cache su-exec \
+    && addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs \
     && mkdir -p /app/data \
     && chown -R nextjs:nodejs /app/data
@@ -52,5 +53,7 @@ RUN chmod 755 /app/docker-entrypoint.sh
 
 USER nextjs
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/setup/status').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "server.js"]

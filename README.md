@@ -150,6 +150,20 @@ http://localhost:3000
 
 Create the first family administrator when prompted. Accounts, SQLite data, uploaded files, and generated security keys are stored in the persistent `family-data` volume.
 
+### fnOS package
+
+Download the `.fpk` matching your NAS CPU from the latest GitHub Release:
+
+- `x86` for Intel or AMD systems
+- `arm` for ARM64 systems
+
+In fnOS, open **App Center → Manual Install**, upload the package, and choose the Web UI port. When installation finishes, open Fanmili from the fnOS desktop and create the first family administrator. AI is optional and can be configured later inside Fanmili; API keys are not requested by the fnOS installer.
+
+Fanmili stores the SQLite database, uploaded files, accounts, and generated security keys in the fnOS **Fanmili** application data share. Stop the app and back up that directory before an upgrade. Installing a newer FPK on the same storage volume preserves the directory. The uninstall wizard keeps it by default and only deletes it when you explicitly select the irreversible delete option.
+
+> [!NOTE]
+> fnOS releases are published for an architecture only after the matching container image and FPK structure pass automated checks. Release notes identify which architecture also completed a real fnOS installation test.
+
 ## Enable Family AI
 
 > [!IMPORTANT]

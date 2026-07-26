@@ -1,0 +1,23 @@
+#!/bin/bash
+
+service_postinst() {
+  require_package_path
+  mkdir -p "$TRIM_PKGVAR/data"
+}
+
+service_postconfig() {
+  if [ -n "${wizard_port:-}" ]; then
+    printf '%s\n' "$wizard_port" > "$TRIM_PKGVAR/.service-port"
+  fi
+}
+
+service_postupgrade() {
+  require_package_path
+  mkdir -p "$TRIM_PKGVAR/data"
+}
+
+service_postuninst() {
+  if [ "${wizard_delete_data:-false}" = "true" ]; then
+    remove_package_data
+  fi
+}

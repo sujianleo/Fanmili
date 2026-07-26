@@ -1,0 +1,13 @@
+#!/bin/bash
+set -u
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+. "$script_dir/common"
+. "$script_dir/service-setup"
+
+run_hook() {
+  local hook="$1"
+  if declare -F "$hook" >/dev/null 2>&1; then
+    "$hook"
+  fi
+}

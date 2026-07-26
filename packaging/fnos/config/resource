@@ -1,0 +1,23 @@
+{
+  "port-config": {
+    "protocol-file": "Fanmili.sc"
+  },
+  "data-share": {
+    "shares": [
+      {
+        "name": "Fanmili",
+        "permission": {
+          "rw": ["fanmili"]
+        }
+      }
+    ]
+  },
+  "docker-project": {
+    "projects": [
+      {
+        "name": "fanmili",
+        "path": "docker"
+      }
+    ]
+  }
+}

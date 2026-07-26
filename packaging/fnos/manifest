@@ -1,0 +1,15 @@
+appname         = fanmili
+version         = 0.0.0
+display_name    = Fanmili
+platform        = x86
+maintainer      = Fanmili
+maintainer_url  = https://github.com/sujianleo/Fanmili
+distributor     = Fanmili
+distributor_url = https://github.com/sujianleo/Fanmili
+desktop_uidir   = ui
+desktop_applaunchname = fanmili.Application
+service_port    = 3000
+checkport       = true
+desc            = 私有部署的家庭聊天、任务、照片、文档与知识中心
+source          = thirdparty
+checksum        =

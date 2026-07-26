@@ -1,0 +1,13 @@
+services:
+  fanmili:
+    image: ghcr.io/sujianleo/family:__IMAGE_TAG__
+    container_name: fanmili-fnos
+    user: "0:0"
+    ports:
+      - "${TRIM_SERVICE_PORT:-3000}:3000"
+    environment:
+      TZ: "${TZ:-Asia/Shanghai}"
+      LANGSMITH_TRACING: "false"
+    volumes:
+      - "${TRIM_PKGVAR:?}/data:/app/data"
+    restart: unless-stopped

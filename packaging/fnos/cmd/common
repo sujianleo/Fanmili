@@ -1,0 +1,24 @@
+#!/bin/bash
+
+fail_install() {
+  local message="$1"
+  if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+    printf '%s\n' "$message" > "$TRIM_TEMP_LOGFILE"
+  fi
+  printf 'ERROR: %s\n' "$message" >&2
+  exit 1
+}
+
+require_package_path() {
+  [ -n "${TRIM_PKGVAR:-}" ] || fail_install "fnOS 未提供应用数据目录。"
+  case "$TRIM_PKGVAR" in
+    /vol[0-9]*/@appdata/fanmili|/usr/local/apps/@appdata/fanmili) ;;
+    *) fail_install "拒绝使用不安全的数据目录：$TRIM_PKGVAR" ;;
+  esac
+}
+
+remove_package_data() {
+  require_package_path
+  [ -d "$TRIM_PKGVAR" ] || return 0
+  find "$TRIM_PKGVAR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+}

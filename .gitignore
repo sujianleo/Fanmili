@@ -109,3 +109,5 @@ test-results/
 *.manifest
 *.spec
 *.so
+*.fpk
+dist/fnos/

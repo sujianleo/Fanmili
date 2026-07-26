@@ -1,0 +1,42 @@
+name: Test fnOS package
+
+on:
+  pull_request:
+    paths:
+      - "packaging/fnos/**"
+      - "apps/web/Dockerfile"
+      - "apps/web/docker-entrypoint.sh"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/test-fnos-package.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and verify both platform packages
+        run: ./packaging/fnos/build-fpk.sh 0.0.0
+
+      - name: Validate Compose interpolation
+        run: |
+          set -euo pipefail
+          work_dir="$(mktemp -d)"
+          tar -xzf dist/fnos/fanmili_0.0.0_x86.fpk -C "$work_dir"
+          TRIM_PKGVAR="$work_dir/appdata" TRIM_SERVICE_PORT=31234 \
+            docker compose -f "$work_dir/docker/docker-compose.yaml" config >/dev/null
+
+      - name: Validate lifecycle path guard
+        run: |
+          set -euo pipefail
+          TRIM_PKGVAR=/vol1/@appdata/fanmili bash -c \
+            '. packaging/fnos/cmd/common; require_package_path'
+          if TRIM_PKGVAR=/vol1 bash -c \
+            '. packaging/fnos/cmd/common; require_package_path'; then
+            echo "unsafe volume root was accepted" >&2
+            exit 1
+          fi
