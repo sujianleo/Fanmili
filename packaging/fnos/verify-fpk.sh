@@ -48,7 +48,7 @@ for package_path in "$@"; do
   grep -q 'image: ghcr.io/sujianleo/family:v' "$compose"
   grep -q 'user: "0:0"' "$compose"
   grep -q '\${TRIM_PKGVAR:?}/data:/app/data' "$compose"
-  grep -q '\${TRIM_SERVICE_PORT:-3000}:3000' "$compose"
+  grep -q '\${TRIM_SERVICE_PORT:-3001}:3000' "$compose"
   if grep -Eq '(__IMAGE_TAG__|:latest|DEEPSEEK_API_KEY|OPENAI_API_KEY)' "$compose"; then
     echo "$(basename "$package_path"): unresolved tag or secret field in Compose" >&2
     exit 1

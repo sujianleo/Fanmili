@@ -5,7 +5,7 @@
       "desc": "Your private family OS",
       "icon": "images/{0}.png",
       "type": "url",
-      "port": "3000",
+      "port": "3001",
       "protocol": "http",
       "url": "/",
       "allUsers": true

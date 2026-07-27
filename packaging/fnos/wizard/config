@@ -6,7 +6,7 @@
         "type": "text",
         "field": "wizard_port",
         "label": "Web UI 端口",
-        "initValue": "3000",
+        "initValue": "3001",
         "rules": [
           { "required": true, "message": "请输入端口号" },
           { "pattern": "^[0-9]+$", "message": "端口必须是数字" }
