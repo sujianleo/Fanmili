@@ -34,6 +34,7 @@ const onboardingProviderPresets: Array<{
 type StoredSettings = {
   activeNetwork?: "internet" | "local" | null;
   lanIp?: string;
+  lanPort?: string;
   networkMode?: "internet" | "local" | "auto";
   providers?: Array<Record<string, unknown>>;
   serverPort?: string;
@@ -48,12 +49,14 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   const [step, setStep] = useState<OnboardingStep>("welcome");
   const [publicDomain, setPublicDomain] = useState("");
   const [lanAddress, setLanAddress] = useState("");
+  const [lanPort, setLanPort] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [themeFamily, setThemeFamily] = useState<ThemeFamily>("mono");
   const [providerKind, setProviderKind] = useState<OnboardingProviderKind>("deepseek");
   const [installPlatform, setInstallPlatform] = useState<InstallPlatform>("desktop");
 
   useEffect(() => {
+    let cancelled = false;
     setInstallPlatform(detectInstallPlatform());
     try {
       clearStoredNetworkAddressesOnce(window.localStorage);
@@ -70,12 +73,28 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
         setReady(true);
         return;
       }
-      setPublicDomain(storedSettings.serverUrl?.trim() || "");
+      setPublicDomain(resolveInitialPublicDomain(storedSettings.serverUrl));
       setLanAddress(resolveInitialLanAddress(storedSettings.lanIp));
+      setLanPort(normalizePort(storedSettings.lanPort) || "3001");
     } catch {
-      setPublicDomain("");
+      setPublicDomain(resolveInitialPublicDomain());
       setLanAddress(resolveInitialLanAddress());
+      setLanPort("3001");
     }
+
+    void fetch("/api/network-defaults", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<NetworkDefaults> : null)
+      .then((defaults) => {
+        if (!defaults || cancelled) return;
+        setPublicDomain((current) => current || normalizePublicDomain(defaults.publicDomain || ""));
+        setLanAddress((current) => current || normalizeLanAddress(defaults.lanAddress || ""));
+        setLanPort((current) => normalizePort(defaults.servicePort) || current || "3001");
+      })
+      .catch(() => null);
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (ready) return <>{children}</>;
@@ -114,6 +133,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
       ...storedSettings,
       activeNetwork: publicTarget.host ? "internet" : normalizedLan ? "local" : null,
       lanIp: normalizedLan,
+      lanPort: normalizePort(lanPort) || "3001",
       networkMode: "auto",
       providers,
       serverPort: publicTarget.port,
@@ -279,6 +299,27 @@ function normalizePublicDomain(value: string) {
   } catch {
     return "";
   }
+}
+
+type NetworkDefaults = {
+  lanAddress?: string;
+  publicDomain?: string;
+  servicePort?: string;
+};
+
+function resolveInitialPublicDomain(storedPublicDomain = "") {
+  const stored = normalizePublicDomain(storedPublicDomain);
+  if (stored) return stored;
+  const hostname = window.location.hostname;
+  if (!hostname || hostname === "localhost" || hostname.endsWith(".local") || isPrivateIpv4Address(hostname)) return "";
+  return window.location.host;
+}
+
+function normalizePort(value = "") {
+  const normalized = value.trim();
+  if (!/^\d{1,5}$/.test(normalized)) return "";
+  const port = Number(normalized);
+  return port >= 1 && port <= 65535 ? String(port) : "";
 }
 
 function applyThemeFamily(themeFamily: ThemeFamily) {

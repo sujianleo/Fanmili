@@ -6,18 +6,74 @@ service_postinst() {
 }
 
 service_postconfig() {
-  if [ -n "${wizard_port:-}" ]; then
-    printf '%s\n' "$wizard_port" > "$TRIM_PKGVAR/.service-port"
-  fi
+  require_package_path
+  mkdir -p "$TRIM_PKGVAR/data"
+  local service_port
+  service_port="$(resolve_service_port)"
+  printf '%s\n' "$service_port" > "$TRIM_PKGVAR/.service-port"
+  write_network_defaults "$service_port"
 }
 
 service_postupgrade() {
   require_package_path
   mkdir -p "$TRIM_PKGVAR/data"
+  service_postconfig
 }
 
 service_postuninst() {
   if [ "${wizard_delete_data:-false}" = "true" ]; then
     remove_package_data
   fi
+}
+
+resolve_service_port() {
+  local candidate="${wizard_port:-}"
+  if [ -z "$candidate" ] && [ -f "$TRIM_PKGVAR/.service-port" ]; then
+    candidate="$(head -n 1 "$TRIM_PKGVAR/.service-port" 2>/dev/null || true)"
+  fi
+  [ -n "$candidate" ] || candidate="${TRIM_SERVICE_PORT:-3001}"
+  case "$candidate" in
+    *[!0-9]*|'') fail_install "Web UI 端口必须是 1–65535 之间的数字。" ;;
+  esac
+  [ "$candidate" -ge 1 ] && [ "$candidate" -le 65535 ] \
+    || fail_install "Web UI 端口必须在 1–65535 之间。"
+  printf '%s\n' "$candidate"
+}
+
+write_network_defaults() {
+  local service_port="$1"
+  local lan_address
+  lan_address="$(detect_private_ipv4)"
+  printf '{"lanAddress":"%s","servicePort":"%s"}\n' "$lan_address" "$service_port" \
+    > "$TRIM_PKGVAR/data/.fnos-network-defaults.json"
+  chmod 644 "$TRIM_PKGVAR/data/.fnos-network-defaults.json"
+}
+
+detect_private_ipv4() {
+  local candidate=""
+  if command -v ip >/dev/null 2>&1; then
+    candidate="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($i == "src") {print $(i+1); exit}}')"
+    if is_private_ipv4 "$candidate"; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  fi
+  if command -v hostname >/dev/null 2>&1; then
+    for candidate in $(hostname -I 2>/dev/null); do
+      if is_private_ipv4 "$candidate"; then
+        printf '%s\n' "$candidate"
+        return
+      fi
+    done
+  fi
+  printf '\n'
+}
+
+is_private_ipv4() {
+  printf '%s\n' "$1" | awk -F. '
+    NF == 4 && $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ && $4 ~ /^[0-9]+$/ &&
+    $1 <= 255 && $2 <= 255 && $3 <= 255 && $4 <= 255 &&
+    ($1 == 10 || ($1 == 172 && $2 >= 16 && $2 <= 31) || ($1 == 192 && $2 == 168)) { found=1 }
+    END { exit found ? 0 : 1 }
+  '
 }

@@ -471,6 +471,7 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
   const [serverUrl, setServerUrl] = useState("");
   const [serverPort, setServerPort] = useState("");
   const [lanIp, setLanIp] = useState("");
+  const [lanPort, setLanPort] = useState("3001");
   const [internetConnectivity, setInternetConnectivity] = useState<ConnectivityTest>({ status: "idle" });
   const [lanConnectivity, setLanConnectivity] = useState<ConnectivityTest>({ status: "idle" });
   const [providers, setProviders] = useState<AiProvider[]>(defaultProviders);
@@ -528,6 +529,7 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
         serverUrl: string;
         serverPort: string;
         lanIp: string;
+        lanPort: string;
         providers: AiProvider[];
         notifications: boolean;
         sync: boolean;
@@ -545,6 +547,7 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
       if (typeof stored.serverUrl === "string") setServerUrl(stored.serverUrl);
       if (typeof stored.serverPort === "string") setServerPort(stored.serverPort);
       if (stored.lanIp) setLanIp(stored.lanIp);
+      if (typeof stored.lanPort === "string") setLanPort(stored.lanPort);
       setProviders(normalizeStoredProviders(stored.providers));
       if (typeof stored.notifications === "boolean") setNotifications(stored.notifications);
       if (typeof stored.sync === "boolean") setSync(stored.sync);
@@ -577,11 +580,12 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
       serverUrl,
       serverPort,
       lanIp,
+      lanPort,
       providers,
       notifications,
       sync
     }));
-  }, [activeNetwork, hydrated, lanIp, networkMode, notifications, providers, serverPort, serverUrl, sync, themeFamily, themeMode]);
+  }, [activeNetwork, hydrated, lanIp, lanPort, networkMode, notifications, providers, serverPort, serverUrl, sync, themeFamily, themeMode]);
 
   useEffect(() => {
     const localConfigured = isCompleteLanAddress(lanIp);
@@ -609,7 +613,7 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
       void testAutomaticNetwork();
     }, 240);
     return () => window.clearTimeout(timer);
-  }, [lanIp, networkMode, open, section, serverPort, serverUrl]);
+  }, [lanIp, lanPort, networkMode, open, section, serverPort, serverUrl]);
 
   useEffect(() => {
     if (!open) return;
@@ -802,7 +806,7 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
     );
     const localConfigured = isCompleteLanAddress(lanIp);
     const localPromise = localConfigured
-      ? testConnectivity(() => buildLanConnectivityTarget(lanIp), setLanConnectivity)
+      ? testConnectivity(() => buildLanConnectivityTarget(lanIp, lanPort), setLanConnectivity)
       : Promise.resolve({ status: "idle" } as ConnectivityTest);
     if (!localConfigured) setLanConnectivity({ status: "idle" });
     const [internetResult, localResult] = await Promise.all([internetPromise, localPromise]);
@@ -971,8 +975,12 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
                   >
                     <div className={networkStyles.localControls}>
                       <SegmentedIpField value={lanIp} onChange={(value) => { setLanIp(value); setLanConnectivity({ status: "idle" }); }} />
+                      <label className={networkStyles.localPort}>
+                        <span>端口</span>
+                        <input aria-label="局域网端口" inputMode="numeric" onChange={(event) => { setLanPort(event.target.value.replace(/\D/g, "").slice(0, 5)); setLanConnectivity({ status: "idle" }); }} value={lanPort} />
+                      </label>
                     </div>
-                    <ConnectivityButton label="本地" test={lanConnectivity} onTest={() => void testConnectivity(() => buildLanConnectivityTarget(lanIp), setLanConnectivity)} />
+                    <ConnectivityButton label="本地" test={lanConnectivity} onTest={() => void testConnectivity(() => buildLanConnectivityTarget(lanIp, lanPort), setLanConnectivity)} />
                   </ConnectionCard>
                   <SegmentedControl
                     value={networkMode}

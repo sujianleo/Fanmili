@@ -6,6 +6,10 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../.." && pwd)"
 version="${1:-}"
 output_dir="${2:-$repo_root/dist/fnos}"
+case "$output_dir" in
+  /*) ;;
+  *) output_dir="$(pwd)/$output_dir" ;;
+esac
 
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
   echo "usage: $0 <version-without-v> [output-directory]" >&2
