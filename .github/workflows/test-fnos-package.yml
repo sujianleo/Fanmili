@@ -27,8 +27,9 @@ jobs:
           set -euo pipefail
           work_dir="$(mktemp -d)"
           tar -xzf dist/fnos/fanmili_0.0.0_x86.fpk -C "$work_dir"
-          TRIM_PKGVAR="$work_dir/appdata" TRIM_SERVICE_PORT=31234 \
-            docker compose -f "$work_dir/docker/docker-compose.yaml" config >/dev/null
+          compose_config="$(TRIM_PKGVAR="$work_dir/appdata" wizard_port=31234 \
+            docker compose -f "$work_dir/docker/docker-compose.yaml" config)"
+          grep -q 'published: "31234"' <<<"$compose_config"
 
       - name: Validate lifecycle path guard
         run: |

@@ -42,13 +42,15 @@ for package_path in "$@"; do
   [ "$(manifest_value "$work_dir/manifest" appname)" = "fanmili" ]
   [ "$(manifest_value "$work_dir/manifest" platform)" = "$expected_platform" ]
   [ "$(manifest_value "$work_dir/manifest" checksum)" = "$(portable_md5 "$work_dir/app.tgz")" ]
+  [ "$(manifest_value "$work_dir/manifest" checkport)" = "false" ]
+  [ "$(manifest_value "$work_dir/manifest" os_min_version)" = "1.1.8" ]
 
   tar -xzf "$work_dir/app.tgz" -C "$work_dir"
   compose="$work_dir/docker/docker-compose.yaml"
   grep -q 'image: ghcr.io/sujianleo/family:v' "$compose"
   grep -q 'user: "0:0"' "$compose"
   grep -q '\${TRIM_PKGVAR:?}/data:/app/data' "$compose"
-  grep -q '\${TRIM_SERVICE_PORT:-3001}:3000' "$compose"
+  grep -q '\${wizard_port:-3001}:3000' "$compose"
   if grep -Eq '(__IMAGE_TAG__|:latest|DEEPSEEK_API_KEY|OPENAI_API_KEY)' "$compose"; then
     echo "$(basename "$package_path"): unresolved tag or secret field in Compose" >&2
     exit 1
@@ -61,6 +63,11 @@ for package_path in "$@"; do
   jq -e . "$work_dir/config/privilege" "$work_dir/config/resource" \
     "$work_dir/ui/config" "$work_dir/wizard/config" \
     "$work_dir/wizard/install" "$work_dir/wizard/uninstall" >/dev/null
+  jq -e '.[0].items[] | select(.field == "wizard_port")' "$work_dir/wizard/install" >/dev/null
+  jq -e '.[0].items[] | select(.field == "wizard_port")' "$work_dir/wizard/config" >/dev/null
+  jq -e '.[".url"]["fanmili.Application"].port == "${wizard_port}"' "$work_dir/ui/config" >/dev/null
+  grep -q '\.fnos-network-defaults\.json' "$work_dir/cmd/service-setup"
+  grep -q 'detect_private_ipv4' "$work_dir/cmd/service-setup"
 
   if tar -tzf "$package_path" | grep -Eiq '(^|/)(\.env|family\.sqlite|data/|node_modules/|test/|tests/|output/)'; then
     echo "$(basename "$package_path"): private or development data found" >&2

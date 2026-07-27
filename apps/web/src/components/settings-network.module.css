@@ -111,6 +111,31 @@
   box-shadow: none;
 }
 
+.localPort {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 1px 4px 4px;
+}
+
+.localPort > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.localPort input {
+  width: 64px;
+  border: 0;
+  outline: 0;
+  padding: 4px 2px;
+  background: transparent;
+  color: var(--text-strong);
+  font-size: 11px;
+}
+
 .localControls .ipField {
   border: 0;
   border-radius: 0;
