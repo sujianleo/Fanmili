@@ -4,6 +4,7 @@ import path from "node:path";
 
 const socketPath = process.env.FAMILY_FNOS_GATEWAY_SOCKET;
 const upstreamPort = Number(process.env.PORT || "3000");
+const entryUrl = normalizeEntryUrl(process.env.FAMILY_FNOS_ENTRY_URL);
 
 if (!socketPath) throw new Error("FAMILY_FNOS_GATEWAY_SOCKET is required");
 
@@ -15,6 +16,14 @@ try {
 }
 
 const proxy = http.createServer((request, response) => {
+  if (entryUrl && request.method === "GET" && (request.headers.accept || "").includes("text/html")) {
+    response.writeHead(302, {
+      "cache-control": "no-store",
+      "location": entryUrl
+    });
+    response.end();
+    return;
+  }
   const upstream = http.request({
     host: "127.0.0.1",
     port: upstreamPort,
@@ -60,3 +69,13 @@ proxy.listen(socketPath, () => fs.chmodSync(socketPath, 0o666));
 const shutdown = () => proxy.close(() => process.exit(0));
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
+function normalizeEntryUrl(value) {
+  if (!value?.trim()) return "";
+  try {
+    const target = new URL(value.trim());
+    return target.protocol === "https:" ? target.toString() : "";
+  } catch {
+    return "";
+  }
+}
