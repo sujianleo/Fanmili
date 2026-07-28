@@ -42,6 +42,7 @@ type StoredSettings = {
 export function OnboardingGate({ children }: { children: ReactNode }) {
   const isLite = process.env.NEXT_PUBLIC_FAMILY_APP_BACKEND === "sqlite";
   const [ready, setReady] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [step, setStep] = useState<OnboardingStep>("welcome");
   const [publicDomain, setPublicDomain] = useState("");
   const [networkMessage, setNetworkMessage] = useState("");
@@ -57,11 +58,16 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    let initialPublicDomain = "";
+    let storedSettingsSnapshot: StoredSettings = {};
+    let storedThemeFamilySnapshot: ThemeFamily = "mono";
     setInstallPlatform(detectInstallPlatform());
     try {
       clearStoredNetworkAddressesOnce(window.localStorage);
       const storedSettings = JSON.parse(window.localStorage.getItem(settingsStorageKey) || "{}") as StoredSettings;
       const storedThemeFamily = storedSettings.themeFamily === "dopamine" ? "dopamine" : "mono";
+      storedSettingsSnapshot = storedSettings;
+      storedThemeFamilySnapshot = storedThemeFamily;
       setThemeFamily(storedThemeFamily);
       applyThemeFamily(storedThemeFamily);
       const onboarding = JSON.parse(window.localStorage.getItem(onboardingStorageKey) || "null") as { completed?: boolean } | null;
@@ -69,24 +75,44 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
         setReady(true);
         return;
       }
-      setPublicDomain(resolveInitialPublicDomain(storedSettings.serverUrl));
+      initialPublicDomain = resolveInitialPublicDomain(storedSettings.serverUrl);
+      setPublicDomain(initialPublicDomain);
       setLanAddress(resolveInitialLanAddress(storedSettings.lanIp));
       setLanPort(normalizePort(storedSettings.lanPort) || "3001");
+      if (completeTrialOnboarding(window.localStorage, storedSettings, storedThemeFamily, initialPublicDomain)) {
+        setReady(true);
+        return;
+      }
     } catch {
-      setPublicDomain(resolveInitialPublicDomain());
+      initialPublicDomain = resolveInitialPublicDomain();
+      setPublicDomain(initialPublicDomain);
       setLanAddress(resolveInitialLanAddress());
       setLanPort("3001");
+      if (completeTrialOnboarding(window.localStorage, {}, "mono", initialPublicDomain)) {
+        setReady(true);
+        return;
+      }
     }
 
     void familyFetch("/api/network-defaults", { cache: "no-store" })
       .then(async (response) => response.ok ? response.json() as Promise<NetworkDefaults> : null)
       .then((defaults) => {
-        if (!defaults || cancelled) return;
-        setPublicDomain((current) => current || normalizePublicDomain(defaults.publicDomain || ""));
+        if (cancelled) return;
+        if (!defaults) {
+          setInitializing(false);
+          return;
+        }
+        const defaultPublicDomain = normalizePublicDomain(defaults.publicDomain || "");
+        const nextPublicDomain = initialPublicDomain || defaultPublicDomain;
+        setPublicDomain(nextPublicDomain);
         setLanAddress((current) => normalizeLanAddress(defaults.lanAddress || "") || current);
         setLanPort((current) => normalizePort(defaults.servicePort) || current || "3001");
+        if (completeTrialOnboarding(window.localStorage, storedSettingsSnapshot, storedThemeFamilySnapshot, nextPublicDomain)) setReady(true);
+        else setInitializing(false);
       })
-      .catch(() => null);
+      .catch(() => {
+        if (!cancelled) setInitializing(false);
+      });
 
     return () => {
       cancelled = true;
@@ -94,6 +120,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   }, []);
 
   if (ready) return <>{children}</>;
+  if (initializing) return null;
 
   function continueFromNetwork(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -421,6 +448,27 @@ function parsePublicTarget(value: string) {
   if (!value.trim()) return { host: "", port: "" };
   const target = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
   return { host: target.hostname, port: target.port || (target.protocol === "http:" ? "80" : "443") };
+}
+
+function completeTrialOnboarding(storage: Storage, storedSettings: StoredSettings, themeFamily: ThemeFamily, publicDomain: string) {
+  if (!isTrialPublicDomain(publicDomain)) return false;
+  const publicTarget = parsePublicTarget(publicDomain);
+  storage.setItem(settingsStorageKey, JSON.stringify({
+    ...storedSettings,
+    activeNetwork: "internet",
+    networkMode: "auto",
+    serverPort: publicTarget.port,
+    serverUrl: publicTarget.host,
+    themeFamily
+  }));
+  storage.setItem(onboardingStorageKey, JSON.stringify({
+    aiConfigured: false,
+    completed: true,
+    completedAt: new Date().toISOString(),
+    publicDomain: publicTarget.host,
+    trial: true
+  }));
+  return true;
 }
 
 function upsertAiProvider(providers: Array<Record<string, unknown>> | undefined, providerKind: OnboardingProviderKind, apiKey: string) {
