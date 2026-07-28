@@ -29,14 +29,7 @@ Keep your family's memories, tasks, conversations, photos, and knowledge in one 
 
 ## Live Demo
 
-Open **[fanmili.superjunior.online](https://fanmili.superjunior.online)** and sign in with the public sandbox account:
-
-```text
-Phone:    13800000002
-Password: FanmiliDemo2026!
-```
-
-No registration is required. On a fresh browser, the demo account opens a three-step setup tour before entering the family home.
+Open **[fanmili.superjunior.online](https://fanmili.superjunior.online)** to enter the public sandbox directly. No phone number, registration, or password is required.
 
 The sandbox contains synthetic family data. You can create tasks, conversations, and records directly from the home screen. Do not upload personal or sensitive information to the public demo.
 

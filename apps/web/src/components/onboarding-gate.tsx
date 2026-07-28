@@ -39,7 +39,7 @@ type StoredSettings = {
   [key: string]: unknown;
 };
 
-export function OnboardingGate({ children }: { children: ReactNode }) {
+export function OnboardingGate({ children, trialMode = false }: { children: ReactNode; trialMode?: boolean }) {
   const isLite = process.env.NEXT_PUBLIC_FAMILY_APP_BACKEND === "sqlite";
   const [ready, setReady] = useState(false);
   const [initializing, setInitializing] = useState(true);
@@ -57,6 +57,11 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   const usingTrialDomain = isTrialPublicDomain(publicDomain);
 
   useEffect(() => {
+    if (trialMode) {
+      setReady(true);
+      setInitializing(false);
+      return;
+    }
     let cancelled = false;
     let initialPublicDomain = "";
     let storedSettingsSnapshot: StoredSettings = {};
@@ -117,7 +122,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [trialMode]);
 
   if (ready) return <>{children}</>;
   if (initializing) return null;

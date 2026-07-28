@@ -4,6 +4,7 @@ import { readFamilyMembersWithOverrides } from "@/lib/server/memberOverrides";
 import { isLocalAuthConfigured, readLocalSession } from "@/lib/server/localAuth";
 import { isLiteBackend } from "@/lib/server/familyBackend";
 import { readLiteFamilyMembers, readLiteInstallation } from "@/lib/server/liteRepository";
+import { isPublicTrialMode } from "@/lib/server/trialMode";
 import { headers } from "next/headers";
 import { connection } from "next/server";
 
@@ -17,9 +18,10 @@ export default async function HomePage() {
     headers()
   ]);
   const localAuthConfigured = isLocalAuthConfigured();
+  const trialMode = isPublicTrialMode();
   const demoDataEnabled = process.env.FAMILY_APP_DEMO_DATA === "true";
   const session = readLocalSession(new Request("http://family-app.local/", { headers: requestHeaders }));
-  const initialSignedIn = localAuthConfigured ? Boolean(session) : !liteBackend;
+  const initialSignedIn = trialMode || (localAuthConfigured ? Boolean(session) : !liteBackend);
   const initialMemberId = session?.memberId || "me";
   const initialRecords = !localAuthConfigured && demoDataEnabled ? familyRecords : [];
   const familyName = liteBackend ? readLiteInstallation()?.familyName || "我们的家" : process.env.FAMILY_APP_FAMILY_NAME || "我们的家";
@@ -37,6 +39,7 @@ export default async function HomePage() {
       initialMemberId={initialMemberId}
       initialSignedIn={initialSignedIn}
       navItems={navItems}
+      trialMode={trialMode}
     />
   );
 }

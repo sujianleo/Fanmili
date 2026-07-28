@@ -1,5 +1,6 @@
 import { isLocalAuthConfigured, localAuthContext, readLocalSession } from "./localAuth";
 import { readRemovedMemberIds } from "./memberOverrides";
+import { isPublicTrialMode, publicTrialContext } from "./trialMode";
 
 export type FamilyRequestContext = {
   familyId: string;
@@ -17,6 +18,9 @@ export class FamilyRequestContextError extends Error {
 }
 
 export async function requireFamilyRequestContext(request: Request): Promise<FamilyRequestContext> {
+  if (isPublicTrialMode()) {
+    return publicTrialContext();
+  }
   if (isLocalAuthConfigured()) {
     const session = readLocalSession(request);
     if (session) {

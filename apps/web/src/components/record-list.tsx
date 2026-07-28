@@ -234,6 +234,7 @@ type RecordListProps = {
   members: FamilyMember[];
   navItems: NavItem[];
   records: FamilyRecord[];
+  trialMode: boolean;
 };
 
 type AutomationFeedback = {
@@ -546,7 +547,7 @@ const chatDismissTravelRatio = 0.92;
 const chatDismissCloseProgress = 0.38;
 const chatDismissCloseVelocity = 0.85;
 
-export function RecordList({ demoDataEnabled, demoRecordIds, familyName, initialMemberId, members, records }: RecordListProps) {
+export function RecordList({ demoDataEnabled, demoRecordIds, familyName, initialMemberId, members, records, trialMode }: RecordListProps) {
   const activeTab: TopTab = "任务";
   const [sessionMemberId, setSessionMemberId] = useState(initialMemberId || currentMemberId);
   const [perspectiveMembers, setPerspectiveMembers] = useState(members);
@@ -1810,6 +1811,7 @@ export function RecordList({ demoDataEnabled, demoRecordIds, familyName, initial
         suspended={Boolean(selectedTaskHasOverlay || selectedResource || inviteTask || multiSelectMode || settingsOpen)}
       />
       <SettingsDrawer
+        authRequired={!trialMode}
         currentMemberId={sessionMemberId}
         isFamilyAdmin={sessionRole === "admin"}
         members={displayMembers}

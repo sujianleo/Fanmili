@@ -10,7 +10,7 @@ import styles from "./family-access-gate.module.css";
 
 const rememberedAccountKey = "family-app-remembered-account";
 
-export function FamilyAccessGate({ children, initialSignedIn }: { children: ReactNode; initialSignedIn: boolean }) {
+export function FamilyAccessGate({ bypassAuth = false, children, initialSignedIn }: { bypassAuth?: boolean; children: ReactNode; initialSignedIn: boolean }) {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -21,6 +21,7 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (bypassAuth) return;
     const rememberedAccount = window.localStorage.getItem(rememberedAccountKey);
     if (rememberedAccount) {
       setPhone(normalizePhoneNumber(rememberedAccount) || rememberedAccount);
@@ -37,9 +38,9 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
       }
       setSetupRequired(Boolean(statusResult.payload.setupRequired));
     });
-  }, []);
+  }, [bypassAuth]);
 
-  if (!isFamilyAuthRequired() || signedIn) {
+  if (bypassAuth || !isFamilyAuthRequired() || signedIn) {
     return <>{children}</>;
   }
 

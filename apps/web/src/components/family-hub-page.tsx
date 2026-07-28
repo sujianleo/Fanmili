@@ -19,6 +19,7 @@ type FamilyHubPageProps = {
   initialMemberId: string;
   initialSignedIn: boolean;
   navItems: NavItem[];
+  trialMode: boolean;
 };
 
 export function FamilyHubPage({
@@ -29,11 +30,12 @@ export function FamilyHubPage({
   familyRecords,
   initialMemberId,
   initialSignedIn,
-  navItems
+  navItems,
+  trialMode
 }: FamilyHubPageProps) {
   return (
-    <FamilyAccessGate initialSignedIn={initialSignedIn}>
-      <OnboardingGate>
+    <FamilyAccessGate bypassAuth={trialMode} initialSignedIn={initialSignedIn}>
+      <OnboardingGate trialMode={trialMode}>
         <NotificationCenter members={familyMembers} />
         <PwaInstallPrompt />
         <main className="app-shell">
@@ -46,8 +48,9 @@ export function FamilyHubPage({
                 familyName={familyName}
                 members={familyMembers}
                 navItems={navItems}
-                records={familyRecords}
-              />
+              records={familyRecords}
+              trialMode={trialMode}
+            />
             </div>
           </section>
         </main>

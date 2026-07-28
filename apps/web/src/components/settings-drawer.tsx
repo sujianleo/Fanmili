@@ -126,6 +126,7 @@ type SettingsDropdownOption = {
 };
 
 type SettingsDrawerProps = {
+  authRequired: boolean;
   currentMemberId: string;
   isFamilyAdmin: boolean;
   members: FamilyMember[];
@@ -468,7 +469,7 @@ function normalizeStoredProvider(provider: AiProvider): AiProvider {
   };
 }
 
-export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, onOpen, onClose, onAiConnected, onOpenAccount, onMemberRemoved, onMemberUpdated, onSignOut }: SettingsDrawerProps) {
+export function SettingsDrawer({ authRequired, currentMemberId, isFamilyAdmin, members, open, onOpen, onClose, onAiConnected, onOpenAccount, onMemberRemoved, onMemberUpdated, onSignOut }: SettingsDrawerProps) {
   const [section, setSection] = useState<SettingsSection>("appearance");
   const [generalDetail, setGeneralDetail] = useState<GeneralDetail | null>(null);
   const [storageEstimate, setStorageEstimate] = useState<{ quota?: number; usage?: number } | null>(null);
@@ -1233,7 +1234,7 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
                         <button onClick={() => void openGeneralDetail("feedback")} type="button"><span><b>意见反馈</b><small>发送文字和截图</small></span><i>›</i></button>
                         <button onClick={() => void openGeneralDetail("about")} type="button"><span><b>关于 Fanmili</b><small>版本 1.0.3</small></span><i>›</i></button>
                       </div>
-                      {isFamilyAuthRequired() ? <button className="settings-signout-button" type="button" onClick={onSignOut}>退出账号</button> : null}
+                      {authRequired && isFamilyAuthRequired() ? <button className="settings-signout-button" type="button" onClick={onSignOut}>退出账号</button> : null}
                     </>
                   )}
                 </SettingsPanel>
