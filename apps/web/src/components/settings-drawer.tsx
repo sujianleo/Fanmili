@@ -49,6 +49,12 @@ type ConnectivityTest = {
   detail?: string;
 };
 
+type NetworkDefaults = {
+  lanAddress?: string;
+  publicDomain?: string;
+  servicePort?: string;
+};
+
 type ApiUsageRollup = {
   completionTokens: number;
   inputCostCny: number;
@@ -556,6 +562,25 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
     }
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    let cancelled = false;
+    void fetch("/api/network-defaults", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<NetworkDefaults> : null)
+      .then((defaults) => {
+        if (!defaults || cancelled) return;
+        const publicTarget = parseNetworkDefaultEndpoint(defaults.publicDomain || "");
+        setServerUrl((current) => current || publicTarget.host);
+        setServerPort((current) => current || publicTarget.port);
+        setLanIp((current) => current || normalizeNetworkDefaultLan(defaults.lanAddress || ""));
+        setLanPort((current) => normalizeNetworkDefaultPort(defaults.servicePort || "") || current || "3001");
+      })
+      .catch(() => null);
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -1432,6 +1457,29 @@ function EndpointField({ host, port, onHostChange, onPortChange }: { host: strin
       </label>
     </div>
   );
+}
+
+function parseNetworkDefaultEndpoint(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return { host: "", port: "" };
+  try {
+    const target = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    return { host: target.hostname, port: target.port };
+  } catch {
+    return { host: "", port: "" };
+  }
+}
+
+function normalizeNetworkDefaultPort(value: string) {
+  const normalized = value.trim();
+  if (!/^\d{1,5}$/.test(normalized)) return "";
+  const port = Number(normalized);
+  return port >= 1 && port <= 65535 ? String(port) : "";
+}
+
+function normalizeNetworkDefaultLan(value: string) {
+  const normalized = value.trim().replace(/^https?:\/\//i, "").split("/")[0]?.split(":")[0] || "";
+  return isCompleteLanAddress(normalized) ? normalized : "";
 }
 
 function SegmentedIpField({ value, onChange }: { value: string; onChange: (value: string) => void }) {

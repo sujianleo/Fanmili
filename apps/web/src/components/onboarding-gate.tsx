@@ -87,7 +87,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
       .then((defaults) => {
         if (!defaults || cancelled) return;
         setPublicDomain((current) => current || normalizePublicDomain(defaults.publicDomain || ""));
-        setLanAddress((current) => current || normalizeLanAddress(defaults.lanAddress || ""));
+        setLanAddress((current) => normalizeLanAddress(defaults.lanAddress || "") || current);
         setLanPort((current) => normalizePort(defaults.servicePort) || current || "3001");
       })
       .catch(() => null);
@@ -344,6 +344,7 @@ function isPrivateIpv4Address(hostname: string) {
   const segments = hostname.split(".").map(Number);
   if (segments.length !== 4 || segments.some((segment) => !Number.isInteger(segment) || segment < 0 || segment > 255)) return false;
   return segments[0] === 10
+    || (segments[0] === 100 && segments[1] >= 64 && segments[1] <= 127)
     || segments[0] === 127
     || (segments[0] === 172 && segments[1] >= 16 && segments[1] <= 31)
     || (segments[0] === 192 && segments[1] === 168);
