@@ -11,8 +11,15 @@ services:
       DEEPSEEK_MODEL_FAST: "${DEEPSEEK_MODEL_FAST:-deepseek-chat}"
       DEEPSEEK_MODEL_DEEP: "${DEEPSEEK_MODEL_DEEP:-deepseek-reasoner}"
       LANGSMITH_TRACING: "false"
+      FAMILY_OCR_ENDPOINT: "${FAMILY_OCR_ENDPOINT:-}"
     volumes:
       - family-data:/app/data
+    restart: unless-stopped
+
+  family-ocr:
+    image: "${FAMILY_OCR_IMAGE:-docker.io/sujianpps/fanmili-ocr:v1.0.2}"
+    container_name: family-ocr
+    profiles: ["ocr"]
     restart: unless-stopped
 
 volumes:

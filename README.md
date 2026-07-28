@@ -150,6 +150,25 @@ http://localhost:3000
 
 Create the first family administrator when prompted. Accounts, SQLite data, uploaded files, and generated security keys are stored in the persistent `family-data` volume.
 
+### Optional image OCR
+
+The default Fanmili image stays lightweight and does not contain Tesseract or
+its Chinese and English model files. Start the isolated OCR component only when
+you need text recognition for images or scanned documents:
+
+```bash
+FAMILY_OCR_ENDPOINT=http://family-ocr:3100/recognize \
+  docker compose --profile ocr up -d
+```
+
+The OCR service is available only on the private Compose network and does not
+publish a host port. Stop it and return to the lightweight default with:
+
+```bash
+docker compose --profile ocr down
+docker compose up -d
+```
+
 ## Enable Family AI
 
 > [!IMPORTANT]

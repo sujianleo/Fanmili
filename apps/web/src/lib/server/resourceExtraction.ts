@@ -1,5 +1,4 @@
-import { copyFile, mkdir, readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import sharp from "sharp";
@@ -39,21 +38,16 @@ export type ResourceExtractionResult = {
   usedOcr: boolean;
 };
 
-type OcrWorker = {
-  recognize(image: Buffer): Promise<{ data: { confidence?: number; text?: string } }>;
-};
-
 type ResourceExtractionGlobal = typeof globalThis & {
   familyResourceOcrQueue?: Promise<void>;
-  familyResourceOcrWorker?: Promise<OcrWorker>;
 };
 
 const globalForResourceExtraction = globalThis as ResourceExtractionGlobal;
-const runtimeRequire = createRequire(import.meta.url);
 const maxDocumentExtractionBytes = 20 * 1024 * 1024;
 const maxOcrPdfPages = 4;
 const minimumUsefulPdfTextLength = 40;
 const maximumExtractedCharacters = 60_000;
+const ocrRequestTimeoutMs = 90_000;
 
 export async function extractResourceFiles(
   files: ResourceExtractionFileInput[],
@@ -121,7 +115,7 @@ async function extractPdf(buffer: Buffer, name: string, dataDir: string): Promis
       const ocrResults: Array<{ confidence: number; text: string }> = [];
       for (const page of screenshot.pages) {
         if (!page.data?.length) continue;
-        ocrResults.push(await recognizeImageText(Buffer.from(page.data), dataDir));
+        ocrResults.push(await recognizeImageText(Buffer.from(page.data)));
       }
       const ocrText = normalizeExtractedText(ocrResults.map((item) => item.text).filter(Boolean).join("\n\n"));
       const text = richerText(pdfText, ocrText);
@@ -145,7 +139,7 @@ async function extractPdf(buffer: Buffer, name: string, dataDir: string): Promis
 async function extractImage(buffer: Buffer, name: string, dataDir: string): Promise<ResourceFileExtraction> {
   try {
     const prepared = await prepareImageForOcr(buffer);
-    const result = await recognizeImageText(prepared, dataDir);
+    const result = await recognizeImageText(prepared);
     return {
       ...extraction(name, "image_ocr", normalizeExtractedText(result.text)),
       confidence: result.confidence
@@ -169,50 +163,42 @@ async function prepareImageForOcr(buffer: Buffer) {
     .toBuffer();
 }
 
-async function recognizeImageText(image: Buffer, dataDir: string) {
+async function recognizeImageText(image: Buffer) {
   const previous = globalForResourceExtraction.familyResourceOcrQueue || Promise.resolve();
   let resolveQueue: () => void = () => undefined;
   const queued = new Promise<void>((resolve) => { resolveQueue = resolve; });
   globalForResourceExtraction.familyResourceOcrQueue = previous.catch(() => undefined).then(() => queued);
   await previous.catch(() => undefined);
   try {
-    const worker = await getOcrWorker(dataDir);
-    const result = await worker.recognize(image);
+    const endpoint = resolveOcrEndpoint();
+    if (!endpoint) throw new Error("OCR optional component is disabled.");
+    const response = await fetch(endpoint, {
+      body: new Uint8Array(image).buffer,
+      headers: { "content-type": "application/octet-stream" },
+      method: "POST",
+      signal: AbortSignal.timeout(ocrRequestTimeoutMs)
+    });
+    if (!response.ok) throw new Error(`OCR component returned HTTP ${response.status}.`);
+    const result = await response.json() as { confidence?: unknown; text?: unknown };
     return {
-      confidence: clampConfidence(result.data.confidence),
-      text: result.data.text || ""
+      confidence: clampConfidence(result.confidence),
+      text: typeof result.text === "string" ? result.text : ""
     };
   } finally {
     resolveQueue();
   }
 }
 
-async function getOcrWorker(dataDir: string) {
-  if (!globalForResourceExtraction.familyResourceOcrWorker) {
-    globalForResourceExtraction.familyResourceOcrWorker = (async () => {
-      const cachePath = path.resolve(dataDir, "tesseract-cache");
-      await mkdir(cachePath, { recursive: true });
-      const { createWorker } = await import("tesseract.js");
-      const [{ default: chineseData }, { default: englishData }] = await Promise.all([
-        import("@tesseract.js-data/chi_sim"),
-        import("@tesseract.js-data/eng")
-      ]);
-      const modelPath = path.resolve(dataDir, "tesseract-models");
-      await mkdir(modelPath, { recursive: true });
-      await Promise.all([
-        copyFile(path.join(chineseData.langPath, "chi_sim.traineddata.gz"), path.join(modelPath, "chi_sim.traineddata.gz")),
-        copyFile(path.join(englishData.langPath, "eng.traineddata.gz"), path.join(modelPath, "eng.traineddata.gz"))
-      ]);
-      const workerPath = runtimeRequire.resolve("tesseract.js/src/worker-script/node/index.js");
-      return createWorker(["chi_sim", "eng"], undefined, {
-        cachePath,
-        gzip: true,
-        langPath: modelPath,
-        workerPath
-      }) as Promise<OcrWorker>;
-    })();
+function resolveOcrEndpoint() {
+  const configured = process.env.FAMILY_OCR_ENDPOINT?.trim();
+  if (!configured) return "";
+  try {
+    const endpoint = new URL(configured);
+    if (!endpoint.pathname || endpoint.pathname === "/") endpoint.pathname = "/recognize";
+    return endpoint;
+  } catch {
+    return "";
   }
-  return globalForResourceExtraction.familyResourceOcrWorker;
 }
 
 async function readUploadedFileBuffer(file: ResourceExtractionFileInput, dataDir: string) {

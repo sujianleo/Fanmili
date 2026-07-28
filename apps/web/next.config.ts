@@ -10,15 +10,21 @@ const nextConfig: NextConfig = {
       "./node_modules/pdf-parse/dist/pdf-parse/esm/pdf.worker.mjs"
     ]
   },
+  // officeparser offers its own optional OCR path and therefore declares
+  // tesseract.js. Fanmili routes OCR through the separate component instead,
+  // so these large WASM assets must not be copied into the default image.
+  outputFileTracingExcludes: {
+    "/*": [
+      "./node_modules/tesseract.js/**/*",
+      "./node_modules/tesseract.js-core/**/*"
+    ]
+  },
   devIndicators: false,
   reactStrictMode: true,
-  // These packages locate worker scripts and language assets at runtime. Keeping
-  // them external prevents Next's server bundler from rewriting those paths.
+  // pdf-parse locates its worker script at runtime. Keeping it external prevents
+  // Next's server bundler from rewriting that path.
   serverExternalPackages: [
-    "@tesseract.js-data/chi_sim",
-    "@tesseract.js-data/eng",
-    "pdf-parse",
-    "tesseract.js"
+    "pdf-parse"
   ],
 };
 
