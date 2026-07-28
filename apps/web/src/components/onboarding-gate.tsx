@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useState, type ReactNode } from "react";
 import { clearStoredNetworkAddressesOnce } from "@/lib/clientPrivacyMigrations";
+import { familyFetch } from "@/lib/familyApi";
+import { withAppBasePath } from "@/lib/appBasePath";
 import styles from "./onboarding-gate.module.css";
 
 const onboardingStorageKey = "family-app.onboarding.v1";
@@ -82,7 +84,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
       setLanPort("3001");
     }
 
-    void fetch("/api/network-defaults", { cache: "no-store" })
+    void familyFetch("/api/network-defaults", { cache: "no-store" })
       .then(async (response) => response.ok ? response.json() as Promise<NetworkDefaults> : null)
       .then((defaults) => {
         if (!defaults || cancelled) return;
@@ -119,7 +121,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
 
     const providers = upsertAiProvider(storedSettings.providers, providerKind, apiKey.trim());
     if (isLite && providerKind === "deepseek" && apiKey.trim()) {
-      await fetch("/api/ai-config", {
+      await familyFetch("/api/ai-config", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -248,7 +250,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
 function Brand({ className = "", isLite = false }: { className?: string; isLite?: boolean }) {
   return (
     <header className={`${styles.brand} ${className}`.trim()}>
-      <Image alt="Fanmili" className={styles.logo} height={72} priority src="/family-logo-v2.png" width={72} />
+      <Image alt="Fanmili" className={styles.logo} height={72} priority src={withAppBasePath("/family-logo-v2.png")} width={72} />
       <div>
         <small>{isLite ? "Fanmili · 数据保存在本机" : "用心记录 · 守护家庭"}</small>
       </div>

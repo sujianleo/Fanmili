@@ -43,6 +43,34 @@ export FAMILY_APP_SQLITE_PATH
 export FAMILY_APP_ALLOW_FILE_FALLBACK
 export FAMILY_APP_DEMO_DATA
 
+start_with_fnos_gateway() {
+  gateway_socket=$FAMILY_FNOS_GATEWAY_SOCKET
+  if [ "$(id -u)" -eq 0 ]; then
+    su-exec nextjs:nodejs "$@" &
+  else
+    "$@" &
+  fi
+  app_pid=$!
+  node /app/fnos-gateway-proxy.mjs &
+  gateway_pid=$!
+
+  trap 'kill "$app_pid" "$gateway_pid" 2>/dev/null || true; wait "$app_pid" "$gateway_pid" 2>/dev/null || true' INT TERM EXIT
+  if wait "$app_pid"; then
+    status=0
+  else
+    status=$?
+  fi
+  kill "$gateway_pid" 2>/dev/null || true
+  wait "$gateway_pid" 2>/dev/null || true
+  trap - INT TERM EXIT
+  return "$status"
+}
+
+if [ -n "${FAMILY_FNOS_GATEWAY_SOCKET:-}" ]; then
+  start_with_fnos_gateway "$@"
+  exit $?
+fi
+
 if [ "$(id -u)" -eq 0 ]; then
   chown -R nextjs:nodejs "$data_root"
   exec su-exec nextjs:nodejs "$@"

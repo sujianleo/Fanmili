@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { FamilyMember } from "@/lib/types";
 import { familyFetch } from "@/lib/familyApi";
+import { appScope, withAppBasePath } from "@/lib/appBasePath";
 import { useHomeDrawerSwipe } from "@/lib/homeDrawerGesture";
 import type { FamilyNotification } from "@/lib/notifications";
 import { buildNotificationPresentation } from "@/lib/notificationPresentation";
@@ -228,12 +229,12 @@ export function NotificationCenter({ members }: { members: FamilyMember[] }) {
 
 async function showLocalSystemNotificationFallback(item: FamilyNotification) {
   if (!("Notification" in window) || Notification.permission !== "granted" || !("serviceWorker" in navigator)) return;
-  const registration = await navigator.serviceWorker.getRegistration("/") || await navigator.serviceWorker.ready;
+  const registration = await navigator.serviceWorker.getRegistration(appScope()) || await navigator.serviceWorker.ready;
   if (await registration.pushManager?.getSubscription().catch(() => null)) return;
   await registration.showNotification(item.title, {
     body: item.body,
-    icon: "/family-logo-v2-192.png",
-    badge: "/family-logo-v2-192.png",
+    icon: withAppBasePath("/family-logo-v2-192.png"),
+    badge: withAppBasePath("/family-logo-v2-192.png"),
     tag: item.id,
     data: { id: item.id, deepLink: item.deepLink }
   });

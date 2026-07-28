@@ -1,6 +1,11 @@
 const CACHE_NAME = "family-app-pwa-v14";
 const APP_SHELL_CACHE_NAME = "family-app-shell-v1";
-const APP_SHELL_CACHE_KEY = "/";
+const APP_BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+const appPath = (path) => {
+  if (!APP_BASE_PATH || path === APP_BASE_PATH || path.startsWith(`${APP_BASE_PATH}/`)) return path;
+  return `${APP_BASE_PATH}${path}`;
+};
+const APP_SHELL_CACHE_KEY = appPath("/");
 const RESOURCE_CACHE_NAME = "family-app-resources-v1";
 const RESOURCE_CACHE_PREFIX = "family-app-resources-";
 const RESOURCE_CACHE_MAX_ENTRIES = 120;
@@ -12,7 +17,7 @@ const STATIC_PATHS = [
   "/family-logo-v2-apple-touch.png",
   "/family-logo-v2.png",
   "/manifest.webmanifest"
-];
+].map(appPath);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -59,21 +64,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/api/")) {
+  if (url.pathname.startsWith(appPath("/api/"))) {
     return;
   }
 
-  if (url.pathname.startsWith("/_next/static/")) {
+  if (url.pathname.startsWith(appPath("/_next/static/"))) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
-  if (url.pathname.startsWith("/resource-icons/") || url.pathname.startsWith("/stickers/") || STATIC_PATHS.includes(url.pathname)) {
+  if (url.pathname.startsWith(appPath("/resource-icons/")) || url.pathname.startsWith(appPath("/stickers/")) || STATIC_PATHS.includes(url.pathname)) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
-  if (request.mode === "navigate" && url.pathname === "/") {
+  if (request.mode === "navigate" && (url.pathname === APP_SHELL_CACHE_KEY || url.pathname === APP_BASE_PATH)) {
     event.respondWith(appShellCacheFirst(request, event));
     return;
   }
@@ -98,11 +103,11 @@ self.addEventListener("push", (event) => {
     Promise.all([
       self.registration.showNotification(payload.title, {
         body: typeof payload.body === "string" ? payload.body : "",
-        icon: "/family-logo-v2-192.png",
-        badge: "/family-logo-v2-192.png",
+        icon: appPath("/family-logo-v2-192.png"),
+        badge: appPath("/family-logo-v2-192.png"),
         tag: `family-notification-${payload.id}`,
         renotify: false,
-        data: { id: payload.id, deepLink: typeof payload.deepLink === "string" ? payload.deepLink : "/" }
+        data: { id: payload.id, deepLink: typeof payload.deepLink === "string" ? appPath(payload.deepLink) : APP_SHELL_CACHE_KEY }
       }),
       unreadCount > 0 && self.registration.setAppBadge ? self.registration.setAppBadge(unreadCount) : Promise.resolve(),
       clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) =>
@@ -114,7 +119,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const deepLink = event.notification.data && typeof event.notification.data.deepLink === "string" ? event.notification.data.deepLink : "/";
+  const deepLink = event.notification.data && typeof event.notification.data.deepLink === "string" ? event.notification.data.deepLink : APP_SHELL_CACHE_KEY;
   const notificationId = event.notification.data && typeof event.notification.data.id === "string" ? event.notification.data.id : "";
   const targetUrl = new URL(deepLink, self.location.origin).href;
   event.waitUntil(
@@ -195,7 +200,7 @@ async function warmResourceCache(urls) {
 }
 
 function isStoredResourceUrl(url) {
-  return url.pathname === "/api/guest-uploads";
+  return url.pathname === appPath("/api/guest-uploads");
 }
 
 function canStoreResourceResponse(request, response) {

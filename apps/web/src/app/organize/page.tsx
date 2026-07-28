@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AvatarImage } from "@/components/avatar";
 import { runAutomationAction, runAutomationPipeline, type AutomationActionResponse } from "@/lib/automations";
 import { familyFetch } from "@/lib/familyApi";
+import { withAppBasePath } from "@/lib/appBasePath";
 import { familyMembers } from "@/lib/mockData";
 import type { FamilyMember } from "@/lib/types";
 import type { BackgroundOrganizationRecord } from "@/lib/server/backgroundOrganizer";
@@ -56,7 +57,7 @@ export default function OrganizePage() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/auth/session", { cache: "no-store" })
+    void familyFetch("/api/auth/session", { cache: "no-store" })
       .then(async (response) => response.ok ? response.json() as Promise<{ memberId?: string | null }> : null)
       .then((session) => {
         if (!cancelled && session?.memberId) setCurrentMemberId(session.memberId);
@@ -246,7 +247,7 @@ export default function OrganizePage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <a className={styles.back} href="/" aria-label="返回首页">
+        <a className={styles.back} href={withAppBasePath("/")} aria-label="返回首页">
           <svg aria-hidden="true" fill="none" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
         </a>
         <div>

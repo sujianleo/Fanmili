@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
+const configuredBasePath = process.env.NEXT_PUBLIC_APP_BASE_PATH?.trim() || "";
+const basePath = configuredBasePath && configuredBasePath !== "/"
+  ? `/${configuredBasePath.replace(/^\/+|\/+$/g, "")}`
+  : undefined;
+
 const nextConfig: NextConfig = {
+  basePath,
   output: "standalone",
   // pdf-parse loads the PDF.js worker by filesystem path at runtime. Next's
   // standalone tracer sees pdf.mjs but cannot infer that sibling worker file.

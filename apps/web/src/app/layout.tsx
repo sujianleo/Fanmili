@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { withAppBasePath } from "@/lib/appBasePath";
 import { KeyboardViewport } from "@/components/keyboard-viewport";
 import { PwaServiceWorker } from "@/components/pwa-service-worker";
 import "./globals.css";
@@ -15,10 +16,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/family-logo-v2-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/family-logo-v2-512.png", sizes: "512x512", type: "image/png" }
+      { url: withAppBasePath("/family-logo-v2-192.png"), sizes: "192x192", type: "image/png" },
+      { url: withAppBasePath("/family-logo-v2-512.png"), sizes: "512x512", type: "image/png" }
     ],
-    apple: [{ url: "/family-logo-v2-apple-touch.png", sizes: "180x180", type: "image/png" }]
+    apple: [{ url: withAppBasePath("/family-logo-v2-apple-touch.png"), sizes: "180x180", type: "image/png" }]
   },
   other: {
     "apple-mobile-web-app-capable": "yes"

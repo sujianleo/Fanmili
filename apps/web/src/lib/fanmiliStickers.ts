@@ -22,7 +22,7 @@ export const fanmiliStickers: FanmiliSticker[] = stickerManifest.items.map((item
   category: item.category,
   categoryZh: item.category_zh,
   text: item.text,
-  src: `/stickers/fanmili-family-stickers-50/${item.file}`
+  src: withAppBasePath(`/stickers/fanmili-family-stickers-50/${item.file}`)
 }));
 
 const stickersById = new Map(fanmiliStickers.map((sticker) => [sticker.id, sticker]));
@@ -69,3 +69,4 @@ function stickerScore(sticker: FanmiliSticker, query: string) {
 function normalizeKeyword(value: string) {
   return value.trim().toLocaleLowerCase("zh-CN").replace(/[\s，。！？、,.!?：:；;“”‘’（）()【】\[\]]+/g, "");
 }
+import { withAppBasePath } from "./appBasePath";

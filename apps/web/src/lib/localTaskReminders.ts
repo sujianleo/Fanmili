@@ -1,6 +1,7 @@
 import type { FamilyNotification } from "./notifications";
 import { buildTaskReminderNotificationCopy } from "./taskNotificationCopy";
 import type { FamilyRecord } from "./types";
+import { withAppBasePath } from "./appBasePath";
 
 export const localTaskReminderEventType = "family-task-reminder";
 export const firedLocalTaskReminderIdsStorageKey = "family-app.notifications.fired-local-task-reminders-v2";
@@ -31,7 +32,7 @@ export function buildDueLocalTaskReminders(
       type: "task_due" as const,
       title: copy.title,
       body: copy.body,
-      deepLink: `/?record=${encodeURIComponent(record.id)}`,
+      deepLink: withAppBasePath(`/?record=${encodeURIComponent(record.id)}`),
       actorMemberId: record.createdByMemberId || null,
       scheduledFor: record.dueAt,
       createdAt: new Date(dueAt).toISOString(),

@@ -1,9 +1,11 @@
+import { withAppBasePath } from "./appBasePath";
+
 export function buildConnectivityTarget(serverUrl: string, serverPort: string) {
   const value = serverUrl.trim();
   const target = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
 
   if (serverPort.trim()) target.port = serverPort.trim();
-  target.pathname = "/api/auth/session";
+  target.pathname = withAppBasePath("/api/auth/session");
   target.search = "";
   target.hash = "";
 
@@ -19,7 +21,7 @@ export function buildLanConnectivityTarget(lanIp: string, port = defaultLanPort)
   const target = new URL(/^https?:\/\//i.test(value) ? value : `http://${value}`);
 
   if (!target.port && port.trim()) target.port = port.trim();
-  target.pathname = "/api/auth/session";
+  target.pathname = withAppBasePath("/api/auth/session");
   target.search = "";
   target.hash = "";
 

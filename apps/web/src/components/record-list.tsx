@@ -687,7 +687,7 @@ export function RecordList({ demoDataEnabled, demoRecordIds, familyName, initial
   }
 
   async function handleSignOutAccount() {
-    const response = await fetch("/api/auth/logout", { method: "POST" });
+    const response = await familyFetch("/api/auth/logout", { method: "POST" });
     if (!response.ok) return;
     await clearLocalResourceCache();
     window.location.replace("/");
@@ -5973,7 +5973,7 @@ function ResourcePreviewSheet({ onClose, record }: { onClose: () => void; record
     setTextPreview(fallbackText);
     setTextPreviewStatus("loading");
 
-    fetch(resourceUrl, { signal: controller.signal })
+    familyFetch(resourceUrl, { signal: controller.signal })
       .then((response) => {
         if (!response.ok) {
           throw new Error("text_preview_fetch_failed");
@@ -6404,7 +6404,7 @@ async function downloadResourceRecord(record: FamilyRecord) {
 
   const downloadName = record.fileName || record.sourceFiles?.find((file) => file.name)?.name || record.title || "resource";
   try {
-    const response = await fetch(resourceUrl, { credentials: "include" });
+    const response = await familyFetch(resourceUrl, { credentials: "include" });
     if (!response.ok) throw new Error("resource_download_failed");
     const objectUrl = URL.createObjectURL(await response.blob());
     triggerResourceDownload(objectUrl, downloadName);

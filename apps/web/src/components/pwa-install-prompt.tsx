@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PWA_INSTALL_REQUEST_EVENT } from "@/lib/pwaInstallRequest";
+import { withAppBasePath } from "@/lib/appBasePath";
 
 const DISMISS_STORAGE_KEY = "family-pwa-install-dismissed-until";
 const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -46,7 +47,7 @@ function isDismissed() {
 function InstallGlyph({ compact = false }: { compact?: boolean }) {
   return (
     <span className={compact ? "pwa-install-glyph compact" : "pwa-install-glyph"} aria-hidden="true">
-      <img src="/family-logo-v2-192.png" alt="" width={compact ? 42 : 48} height={compact ? 42 : 48} />
+      <img src={withAppBasePath("/family-logo-v2-192.png")} alt="" width={compact ? 42 : 48} height={compact ? 42 : 48} />
       <span>
         <svg viewBox="0 0 24 24" fill="none">
           <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

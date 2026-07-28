@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { familyFetch } from "@/lib/familyApi";
+import { appScope, withAppBasePath } from "@/lib/appBasePath";
 import type { NotificationPlatform } from "@/lib/notifications";
 import { describeNotificationStatus, type NotificationPermissionState } from "@/lib/notificationPush";
 
@@ -28,7 +29,7 @@ export function NotificationSystemSettings() {
     if (Notification.permission !== "granted") {
       return;
     }
-    void navigator.serviceWorker.getRegistration("/")
+    void navigator.serviceWorker.getRegistration(appScope())
       .then((registration) => registration?.pushManager.getSubscription())
       .then((subscription) => setSubscribed(Boolean(subscription)))
       .catch(() => setSubscribed(false));
@@ -113,8 +114,8 @@ async function showFirstSystemNotificationTest(registration: ServiceWorkerRegist
   if (localStorage.getItem(systemNotificationTestKey) === "sent") return false;
   await registration.showNotification("🎉 Fanmili 已就位", {
     body: "以后该喝水、下班、拿快递，我都会准时敲敲你。",
-    icon: "/family-logo-v2-192.png",
-    badge: "/family-logo-v2-192.png",
+    icon: withAppBasePath("/family-logo-v2-192.png"),
+    badge: withAppBasePath("/family-logo-v2-192.png"),
     tag: "family-notification-first-test",
     data: { id: "first-test", deepLink: "/" }
   });

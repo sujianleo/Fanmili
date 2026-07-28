@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { appScope, withAppBasePath } from "@/lib/appBasePath";
 
 const refreshAppShellMessage = { type: "family-refresh-app-shell" } as const;
 
@@ -32,7 +33,7 @@ export function PwaServiceWorker() {
     }
 
     const registerServiceWorker = () => {
-      void navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" })
+      void navigator.serviceWorker.register(withAppBasePath("/sw.js"), { scope: appScope(), updateViaCache: "none" })
         .then(async (registration) => {
           await registration.update();
           refreshPwaAppShell();

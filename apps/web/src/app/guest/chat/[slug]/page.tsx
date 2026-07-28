@@ -6,6 +6,7 @@ import { familyMembers } from "@/lib/mockData";
 import { metaEventsToRoomMessages } from "@/lib/meta";
 import { normalizePhoneNumber } from "@/lib/phoneAuth";
 import { familyFetch } from "@/lib/familyApi";
+import { withAppBasePath } from "@/lib/appBasePath";
 import { formatChatTimestamp, shouldShowChatTimestamp } from "@/lib/chatMessageTime";
 import type { FanmiliSticker } from "@/lib/fanmiliStickers";
 import type { FamilyRecord, RoomMessage } from "@/lib/types";
@@ -128,7 +129,7 @@ export default function GuestChatPage({ params }: { params: Promise<{ slug: stri
     }
     setAuthSubmitting(true);
     setAuthMessage("");
-    const response = await fetch("/api/guest-chat/session", {
+    const response = await familyFetch("/api/guest-chat/session", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ phone, code, slug })
@@ -349,7 +350,7 @@ export default function GuestChatPage({ params }: { params: Promise<{ slug: stri
     return (
       <main className="guest-chat-shell guest-code-shell">
         <section aria-live="polite" className="guest-chat-card guest-code-card">
-          <img alt="Fanmili" className="guest-code-logo" src="/family-logo-v2-192.png" />
+          <img alt="Fanmili" className="guest-code-logo" src={withAppBasePath("/family-logo-v2-192.png")} />
           <p>正在打开群聊…</p>
         </section>
       </main>
@@ -360,7 +361,7 @@ export default function GuestChatPage({ params }: { params: Promise<{ slug: stri
     return (
       <main className="guest-chat-shell guest-code-shell">
         <form aria-label="访客登录" className="guest-chat-card guest-code-card" onSubmit={submitCode}>
-          <img alt="Fanmili" className="guest-code-logo" src="/family-logo-v2-192.png" />
+          <img alt="Fanmili" className="guest-code-logo" src={withAppBasePath("/family-logo-v2-192.png")} />
           <h1>进入群聊</h1>
           <p>输入手机号和邀请人提供的四位口令。临时访客身份只保留在当前设备 24 小时；登录账号后才能跨设备找回。</p>
           <label className="guest-phone-field">
@@ -560,14 +561,14 @@ type GuestSessionResponse = {
 };
 
 async function fetchGuestChatEvents(slug: string) {
-  const response = await fetch(`/api/guest-chat/messages?slug=${encodeURIComponent(slug)}`, { cache: "no-store" }).catch(() => null);
+  const response = await familyFetch(`/api/guest-chat/messages?slug=${encodeURIComponent(slug)}`, { cache: "no-store" }).catch(() => null);
   if (!response?.ok) return [];
   const payload = await response.json() as { events?: MetaEvent[] };
   return payload.events || [];
 }
 
 async function enqueueGuestChatEvent(event: { slug: string; type: "group_chat_message" | "group_attachment_selected"; actorName: string; text: string; metadata: Record<string, unknown> }) {
-  const response = await fetch("/api/guest-chat/messages", {
+  const response = await familyFetch("/api/guest-chat/messages", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ slug: event.slug, type: event.type, actor_name: event.actorName, text: event.text, metadata: event.metadata })

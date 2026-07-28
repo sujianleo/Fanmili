@@ -1,5 +1,7 @@
+import { withAppBasePath } from "./appBasePath";
+
 export async function familyFetch(input: RequestInfo | URL, init: RequestInit = {}) {
-  return fetch(input, init);
+  return fetch(typeof input === "string" ? withAppBasePath(input) : input, init);
 }
 
 export function isFamilyAuthRequired() {

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { use, useEffect, useState } from "react";
 import { AvatarImage } from "@/components/avatar";
 import { familyFetch } from "@/lib/familyApi";
+import { withAppBasePath } from "@/lib/appBasePath";
 import { normalizePhoneNumber } from "@/lib/phoneAuth";
 import styles from "./invite.module.css";
 
@@ -40,7 +41,7 @@ export default function InvitePage({ params }: { params: Promise<{ inviteId: str
   useEffect(() => {
     const embeddedCode = new URLSearchParams(window.location.search).get("code")?.replace(/\D/g, "").slice(0, 4) || "";
     if (embeddedCode) setCode(embeddedCode);
-    fetch(embeddedCode.length === 4 ? `/api/invites/${encodeURIComponent(inviteId)}/verify` : `/api/invites/${encodeURIComponent(inviteId)}`, embeddedCode.length === 4 ? { body: JSON.stringify({ code: embeddedCode }), headers: { "content-type": "application/json" }, method: "POST" } : { cache: "no-store" })
+    familyFetch(embeddedCode.length === 4 ? `/api/invites/${encodeURIComponent(inviteId)}/verify` : `/api/invites/${encodeURIComponent(inviteId)}`, embeddedCode.length === 4 ? { body: JSON.stringify({ code: embeddedCode }), headers: { "content-type": "application/json" }, method: "POST" } : { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json().catch(() => ({})) as { detail?: string; invite?: InvitePreview };
         if (!response.ok || !payload.invite) throw new Error(payload.detail || "邀请不存在。");
@@ -55,7 +56,7 @@ export default function InvitePage({ params }: { params: Promise<{ inviteId: str
     if (!/^\d{4}$/.test(code)) return setMessage("请输入 4 位验证码。");
     setBusy(true);
     setMessage("");
-    const response = await fetch(`/api/invites/${encodeURIComponent(inviteId)}/verify`, { body: JSON.stringify({ code }), headers: { "content-type": "application/json" }, method: "POST" }).catch(() => null);
+    const response = await familyFetch(`/api/invites/${encodeURIComponent(inviteId)}/verify`, { body: JSON.stringify({ code }), headers: { "content-type": "application/json" }, method: "POST" }).catch(() => null);
     setBusy(false);
     const payload = response ? await response.json().catch(() => ({})) as { detail?: string; invite?: InvitePreview } : {};
     if (!response?.ok || !payload.invite) return setMessage(payload.detail || "暂时无法验证邀请。");
@@ -92,7 +93,7 @@ export default function InvitePage({ params }: { params: Promise<{ inviteId: str
   return (
     <main className={styles.shell}>
       <section className={styles.card}>
-        <Image alt="Fanmili" className={styles.logo} height={72} priority src="/family-logo-v2-192.png" width={72} />
+        <Image alt="Fanmili" className={styles.logo} height={72} priority src={withAppBasePath("/family-logo-v2-192.png")} width={72} />
         <span className={styles.eyebrow}>{invite?.type === "family" ? "邀请家人" : "邀请朋友加入讨论"}</span>
         <h1>{invite?.verified ? (invite.title || (invite.type === "family" ? "加入这个家庭" : "加入这个群聊")) : "验证邀请"}</h1>
 

@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useEffect, useState, type ReactNode } from "react";
-import { isFamilyAuthRequired } from "@/lib/familyApi";
+import { familyFetch, isFamilyAuthRequired } from "@/lib/familyApi";
+import { withAppBasePath } from "@/lib/appBasePath";
 import { normalizePhoneNumber } from "@/lib/phoneAuth";
 import { refreshPwaAppShell } from "./pwa-service-worker";
 import styles from "./family-access-gate.module.css";
@@ -25,8 +26,8 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
       setPhone(rememberedAccount);
     }
     void Promise.all([
-      fetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok).catch(() => false),
-      fetch("/api/setup/status", { cache: "no-store" }).then(async (response) => ({ ok: response.ok, payload: await response.json().catch(() => ({})) as { detail?: string; setupRequired?: boolean } })).catch(() => null)
+      familyFetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok).catch(() => false),
+      familyFetch("/api/setup/status", { cache: "no-store" }).then(async (response) => ({ ok: response.ok, payload: await response.json().catch(() => ({})) as { detail?: string; setupRequired?: boolean } })).catch(() => null)
     ]).then(([hasSession, statusResult]) => {
       setSignedIn(hasSession);
       if (!statusResult?.ok) {
@@ -58,7 +59,7 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
     }
     setSubmitting(true);
     setMessage("");
-    const response = await fetch("/api/auth/login", {
+    const response = await familyFetch("/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ phone: normalizedPhone, password })
@@ -93,7 +94,7 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
     }
     setSubmitting(true);
     setMessage("");
-    const response = await fetch("/api/setup", {
+    const response = await familyFetch("/api/setup", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ displayName, familyName, password, phone: normalizedPhone })
@@ -104,7 +105,7 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
       setMessage(payload.detail || "创建家庭失败，请重试。");
       return;
     }
-    const signInResult = await fetch("/api/auth/login", {
+    const signInResult = await familyFetch("/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ phone: normalizedPhone, password })
@@ -124,7 +125,7 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
     return (
       <main className={`app-shell ${styles.state}`}>
         <div className={`${styles.card} ${styles.loading}`} aria-label="正在连接家庭数据库">
-          <Image alt="" className={styles.logo} height={112} priority src="/family-logo-v2.png" width={112} />
+          <Image alt="" className={styles.logo} height={112} priority src={withAppBasePath("/family-logo-v2.png")} width={112} />
         </div>
       </main>
     );
@@ -133,7 +134,7 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
   return (
     <main className={`app-shell ${styles.state}`}>
       <form className={styles.card} onSubmit={setupRequired ? createFamily : signInWithPhone}>
-        <Image alt="Fanmili" className={styles.logo} height={112} priority src="/family-logo-v2.png" width={112} />
+        <Image alt="Fanmili" className={styles.logo} height={112} priority src={withAppBasePath("/family-logo-v2.png")} width={112} />
         {setupRequired ? <div className={styles.intro}><h1>创建家庭</h1><p>第一位成员将成为管理员。</p></div> : null}
         {setupRequired ? <label className={styles.field}>
           <input aria-label="你的名字" autoComplete="name" maxLength={40} onChange={(event) => setDisplayName(event.target.value)} placeholder="你的名字" required value={displayName} />

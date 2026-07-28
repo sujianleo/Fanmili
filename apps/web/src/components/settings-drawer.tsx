@@ -566,7 +566,7 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
   useEffect(() => {
     if (!hydrated) return;
     let cancelled = false;
-    void fetch("/api/network-defaults", { cache: "no-store" })
+    void familyFetch("/api/network-defaults", { cache: "no-store" })
       .then(async (response) => response.ok ? response.json() as Promise<NetworkDefaults> : null)
       .then((defaults) => {
         if (!defaults || cancelled) return;

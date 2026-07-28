@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AvatarImage } from "@/components/avatar";
+import { familyFetch } from "@/lib/familyApi";
 import type { FamilyMember, FamilyRecord } from "@/lib/types";
 
 type InsightCandidate = {
@@ -67,7 +68,7 @@ export function FamilyStatusDashboard({
 
   useEffect(() => {
     let active = true;
-    void fetch("/api/family-insights?limit=7", { cache: "no-store", credentials: "include" })
+    void familyFetch("/api/family-insights?limit=7", { cache: "no-store", credentials: "include" })
       .then(async (response) => response.ok ? response.json() as Promise<InsightResponse> : null)
       .then((payload) => {
         if (!active || !payload) return;

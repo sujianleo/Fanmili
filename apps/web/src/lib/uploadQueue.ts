@@ -2,9 +2,11 @@
 
 import Uppy from "@uppy/core";
 import Tus from "@uppy/tus";
+import { withAppBasePath } from "./appBasePath";
+import { familyFetch } from "./familyApi";
 import { RESOURCE_UPLOAD_MAX_BYTES } from "./resourceUploadPolicy";
 
-export const TUS_UPLOAD_ENDPOINT = "/api/tus";
+export const TUS_UPLOAD_ENDPOINT = withAppBasePath("/api/tus");
 export const TUS_UPLOAD_CONCURRENCY = 2;
 
 export type UploadedFileReference = {
@@ -109,7 +111,7 @@ async function uploadFilesToLiteStorage(
   formData.set("recordId", "family-lite");
   formData.set("messageId", options.messageId);
   files.forEach((file) => formData.append("files", file, file.name));
-  const response = await fetch("/api/guest-uploads", {
+  const response = await familyFetch("/api/guest-uploads", {
     body: formData,
     credentials: "include",
     method: "POST"
@@ -132,7 +134,7 @@ async function addServerPreviews(files: UploadedFileReference[]) {
   }
 
   try {
-    const response = await fetch("/api/guest-uploads", {
+    const response = await familyFetch("/api/guest-uploads", {
       body: JSON.stringify({ tusIds: previewTusIds }),
       headers: { "content-type": "application/json" },
       method: "POST"
