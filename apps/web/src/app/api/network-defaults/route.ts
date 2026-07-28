@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 
 type NetworkDefaults = {
   lanAddress?: string;
+  publicDomain?: string;
   servicePort?: string;
 };
 
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     const defaults = await readNetworkDefaults();
     return NextResponse.json({
       lanAddress: normalizePrivateIpv4(defaults.lanAddress),
-      publicDomain: publicHost(request),
+      publicDomain: normalizePublicDomain(defaults.publicDomain) || publicHost(request),
       servicePort: normalizePort(defaults.servicePort)
     });
   } catch (error) {
@@ -25,6 +26,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ detail: error.message }, { status: error.status });
     }
     return NextResponse.json({ lanAddress: "", publicDomain: publicHost(request), servicePort: "" });
+  }
+}
+
+function normalizePublicDomain(value = "") {
+  const candidate = String(value).trim();
+  if (!candidate) return "";
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`);
+    return parsed.protocol === "https:" && !isLocalHostname(parsed.hostname) && !isFnosRemoteHostname(parsed.hostname)
+      ? parsed.origin
+      : "";
+  } catch {
+    return "";
   }
 }
 

@@ -10,6 +10,7 @@ import { calculateMemberAge, formatMemberBirthDateInput, memberBirthDatePickerMa
 import { useHomeDrawerSwipe } from "@/lib/homeDrawerGesture";
 import { buildConnectivityTarget, buildLanConnectivityTarget, isCompleteLanAddress, selectFastestNetwork } from "@/lib/networkConnectivity";
 import { clearStoredNetworkAddressesOnce } from "@/lib/clientPrivacyMigrations";
+import { withAppBasePath } from "@/lib/appBasePath";
 import { usePageScrollLock } from "@/lib/pageScrollLock";
 import { NotificationSystemSettings } from "./notification-system-settings";
 import type { FamilyMember, MemberProfile } from "@/lib/types";
@@ -93,6 +94,7 @@ type AiTuningState = {
 };
 
 const AI_TUNING_VISIBLE = false;
+const TRIAL_PUBLIC_HOST = "fanmili.superjunior.online";
 
 type AiProvider = {
   id: string;
@@ -480,6 +482,11 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
   const [lanPort, setLanPort] = useState("3001");
   const [internetConnectivity, setInternetConnectivity] = useState<ConnectivityTest>({ status: "idle" });
   const [lanConnectivity, setLanConnectivity] = useState<ConnectivityTest>({ status: "idle" });
+  const [ownNasSwitchOpen, setOwnNasSwitchOpen] = useState(false);
+  const [ownNasAddress, setOwnNasAddress] = useState("");
+  const [ownNasConnectivity, setOwnNasConnectivity] = useState<ConnectivityTest>({ status: "idle" });
+  const [ownNasMessage, setOwnNasMessage] = useState("");
+  const [ownNasConfirming, setOwnNasConfirming] = useState(false);
   const [providers, setProviders] = useState<AiProvider[]>(defaultProviders);
   const [apiUsage, setApiUsage] = useState<ApiUsageState>({ status: "idle" });
   const [aiTuning, setAiTuning] = useState<AiTuningState>({ profile: null, status: "idle" });
@@ -841,6 +848,63 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
     setActiveNetwork(selectFastestNetwork(internetResult, localResult, localConfigured));
   }
 
+  async function testOwnNasAddress() {
+    setOwnNasMessage("");
+    setOwnNasConfirming(false);
+    let target: ReturnType<typeof parseOwnNasEndpoint>;
+    try {
+      target = parseOwnNasEndpoint(ownNasAddress);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "地址格式不正确";
+      setOwnNasConnectivity({ status: "failed", detail });
+      setOwnNasMessage(detail);
+      return;
+    }
+    const result = await testConnectivity(
+      () => buildConnectivityTarget(target.host, target.port),
+      setOwnNasConnectivity
+    );
+    setOwnNasMessage(result.status === "success"
+      ? "地址可以访问。请确认打开的是你自己的 Fanmili；切换后需要重新登录。"
+      : result.detail || "无法连接，请检查域名、HTTPS 和反向代理设置。");
+  }
+
+  function completeOwnNasSwitch() {
+    if (ownNasConnectivity.status !== "success") return;
+    if (!ownNasConfirming) {
+      setOwnNasConfirming(true);
+      return;
+    }
+    let target: ReturnType<typeof parseOwnNasEndpoint>;
+    try {
+      target = parseOwnNasEndpoint(ownNasAddress);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "地址格式不正确";
+      setOwnNasConnectivity({ status: "failed", detail });
+      setOwnNasMessage(detail);
+      setOwnNasConfirming(false);
+      return;
+    }
+    let stored: Record<string, unknown> = {};
+    try {
+      stored = JSON.parse(localStorage.getItem(storageKey) || "{}") as Record<string, unknown>;
+    } catch {
+      stored = {};
+    }
+    localStorage.setItem(storageKey, JSON.stringify({
+      ...stored,
+      activeNetwork: "internet",
+      networkMode: "internet",
+      serverPort: target.port,
+      serverUrl: target.host
+    }));
+    setServerUrl(target.host);
+    setServerPort(target.port);
+    setNetworkMode("internet");
+    setActiveNetwork("internet");
+    window.location.assign(new URL(withAppBasePath("/"), target.origin).toString());
+  }
+
   function addProvider() {
     const id = `provider-${Date.now()}`;
     const preset = providerPresets[0];
@@ -982,6 +1046,62 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
 
               {section === "network" ? (
                 <SettingsPanel>
+                  {isTrialPublicAddress(serverUrl) ? (
+                    <section className={networkStyles.trialSwitchCard} aria-label="从试用版切换到自己的 NAS">
+                      <div className={networkStyles.trialSwitchCopy}>
+                        <strong>正在使用公开试用版</strong>
+                        <p>喜欢 Fanmili？你可以切换到自己的 NAS。试用版数据不会自动迁移，请勿在公开试用环境上传隐私资料。</p>
+                      </div>
+                      {!ownNasSwitchOpen ? (
+                        <button className={networkStyles.switchPrimary} onClick={() => setOwnNasSwitchOpen(true)} type="button">切换到自己的 NAS</button>
+                      ) : (
+                        <div className={networkStyles.switchForm}>
+                          <label>
+                            <span>自己的 HTTPS 公网地址</span>
+                            <input
+                              aria-label="自己的 HTTPS 公网地址"
+                              autoCapitalize="none"
+                              autoCorrect="off"
+                              inputMode="url"
+                              onChange={(event) => {
+                                setOwnNasAddress(event.target.value);
+                                setOwnNasConnectivity({ status: "idle" });
+                                setOwnNasMessage("");
+                                setOwnNasConfirming(false);
+                              }}
+                              placeholder="https://family.example.com"
+                              spellCheck={false}
+                              type="url"
+                              value={ownNasAddress}
+                            />
+                          </label>
+                          <small>该地址必须已解析到你的 NAS，并配置有效的 HTTPS 证书和反向代理。</small>
+                          <ConnectivityButton label="自己的 NAS" test={ownNasConnectivity} onTest={() => void testOwnNasAddress()} />
+                          {ownNasMessage ? <p className={networkStyles.switchMessage} role="status">{ownNasMessage}</p> : null}
+                          {ownNasConfirming ? (
+                            <div className={networkStyles.switchConfirmation} role="group" aria-label="确认切换到自己的 NAS">
+                              <strong>确认切换？</strong>
+                              <p>试用版中的记录不会自动复制到你的 NAS。切换后需要使用自己 NAS 上的账号重新登录。</p>
+                              <div>
+                                <button onClick={() => setOwnNasConfirming(false)} type="button">返回检查</button>
+                                <button className={networkStyles.switchDanger} onClick={completeOwnNasSwitch} type="button">确认切换</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={networkStyles.switchActions}>
+                              <button onClick={() => {
+                                setOwnNasSwitchOpen(false);
+                                setOwnNasAddress("");
+                                setOwnNasConnectivity({ status: "idle" });
+                                setOwnNasMessage("");
+                              }} type="button">暂不切换</button>
+                              <button className={networkStyles.switchPrimary} disabled={ownNasConnectivity.status !== "success"} onClick={completeOwnNasSwitch} type="button">保存并切换</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </section>
+                  ) : null}
                   <ConnectionCard
                     title="公网连接"
                     status={connectivityCardStatus(internetConnectivity)}
@@ -1654,6 +1774,31 @@ function parseNetworkDefaultEndpoint(value: string) {
   } catch {
     return { host: "", port: "" };
   }
+}
+
+function isTrialPublicAddress(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  try {
+    const target = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    return target.hostname.toLowerCase() === TRIAL_PUBLIC_HOST;
+  } catch {
+    return trimmed.toLowerCase().split(":")[0] === TRIAL_PUBLIC_HOST;
+  }
+}
+
+function parseOwnNasEndpoint(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) throw new Error("请填写自己的 HTTPS 公网地址。");
+  const target = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+  const hostname = target.hostname.toLowerCase();
+  if (target.protocol !== "https:") throw new Error("公网地址必须使用 HTTPS。");
+  if (hostname === TRIAL_PUBLIC_HOST) throw new Error("这是公开试用地址，请填写你自己的公网域名。");
+  if (isFnosRemoteAddress(hostname)) throw new Error("飞牛远程入口不能作为独立公网地址。");
+  if (hostname === "localhost" || hostname.endsWith(".local") || !hostname.includes(".") || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname)) {
+    throw new Error("请填写可从互联网直接访问的域名。");
+  }
+  return { host: hostname, origin: target.origin, port: target.port };
 }
 
 function isFnosRemoteAddress(value: string) {

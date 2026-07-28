@@ -9,6 +9,7 @@ import styles from "./onboarding-gate.module.css";
 
 const onboardingStorageKey = "family-app.onboarding.v1";
 const settingsStorageKey = "family-app.settings.v1";
+const trialPublicHost = "fanmili.superjunior.online";
 
 type OnboardingStep = "welcome" | "network" | "ai" | "install";
 type ThemeFamily = "mono" | "dopamine";
@@ -52,6 +53,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   const [themeFamily, setThemeFamily] = useState<ThemeFamily>("mono");
   const [installPlatform, setInstallPlatform] = useState<InstallPlatform>("desktop");
   const providerKind: OnboardingProviderKind = "deepseek";
+  const usingTrialDomain = isTrialPublicDomain(publicDomain);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,9 +190,9 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
           <div className={styles.welcome}>
             <Brand className={styles.welcomeBrand} isLite={isLite} />
             <div className={styles.requirements}>
-              <strong>开始前请准备</strong>
-              <span>你自己的 Fanmili 公网地址</span>
-              <span>可用的 DeepSeek API Key</span>
+              <strong>{usingTrialDomain ? "公开试用版已准备好" : "开始前请准备"}</strong>
+              <span>{usingTrialDomain ? "使用 Fanmili 提供的公开试用服务" : "你自己的 Fanmili 公网地址"}</span>
+              <span>{usingTrialDomain ? "以后可在设置中切换到自己的 NAS" : "可用的 DeepSeek API Key"}</span>
             </div>
             <div aria-label="选择配色" className={styles.themeChoice} role="group">
               <button
@@ -218,14 +220,18 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
 
         {step === "network" ? (
           <form className={styles.form} onSubmit={continueFromNetwork}>
-            <StepHeader current={1} title="填写公网地址" description="这是家人在外面打开 Fanmili 时使用的地址。" />
+            <StepHeader
+              current={1}
+              title={usingTrialDomain ? "确认试用地址" : "填写公网地址"}
+              description={usingTrialDomain ? "先体验公开试用版，满意后可在设置中切换到自己的 NAS。" : "这是家人在外面打开 Fanmili 时使用的地址。"}
+            />
             <label className={styles.field}>
               <span>公网地址 <em>必填</em></span>
               <input autoCapitalize="none" autoCorrect="off" inputMode="url" onChange={(event) => {
                 setPublicDomain(event.target.value);
                 setNetworkMessage("");
               }} placeholder="https://family.example.com" spellCheck={false} type="url" value={publicDomain} />
-              <small>请先确认这个地址能在手机流量网络中直接打开。不能填写 *.fnos.net、192.168.x.x 或其他局域网地址。</small>
+              <small>{usingTrialDomain ? "公开试用版使用共享体验环境，请勿上传个人隐私资料；切换自己的 NAS 时，试用数据不会自动迁移。" : "请先确认这个地址能在手机流量网络中直接打开。不能填写 *.fnos.net、192.168.x.x 或其他局域网地址。"}</small>
             </label>
             {networkMessage ? <p className={`${styles.verificationMessage} ${styles.verificationFailed}`} role="alert">{networkMessage}</p> : null}
             <div className={styles.actions}>
@@ -353,6 +359,17 @@ function resolveInitialPublicDomain(storedPublicDomain = "") {
 
 function isFnosRemoteHostname(hostname: string) {
   return hostname.toLowerCase().endsWith(".fnos.net");
+}
+
+function isTrialPublicDomain(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  try {
+    const target = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    return target.hostname.toLowerCase() === trialPublicHost;
+  } catch {
+    return false;
+  }
 }
 
 function isUnsupportedPublicHostname(hostname: string) {
