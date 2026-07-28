@@ -23,7 +23,7 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
   useEffect(() => {
     const rememberedAccount = window.localStorage.getItem(rememberedAccountKey);
     if (rememberedAccount) {
-      setPhone(rememberedAccount);
+      setPhone(normalizePhoneNumber(rememberedAccount) || rememberedAccount);
     }
     void Promise.all([
       familyFetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok).catch(() => false),
@@ -70,7 +70,7 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
       setMessage(payload.detail || "暂时无法登录，请稍后重试。");
       return;
     }
-    window.localStorage.setItem(rememberedAccountKey, phone.trim());
+    window.localStorage.setItem(rememberedAccountKey, normalizedPhone);
     setPassword("");
     setSignedIn(true);
     refreshPwaAppShell();
@@ -116,7 +116,7 @@ export function FamilyAccessGate({ children, initialSignedIn }: { children: Reac
       setMessage("家庭已创建，请使用刚才的账号登录。");
       return;
     }
-    window.localStorage.setItem(rememberedAccountKey, phone.trim());
+    window.localStorage.setItem(rememberedAccountKey, normalizedPhone);
     setSignedIn(true);
     refreshPwaAppShell();
   }

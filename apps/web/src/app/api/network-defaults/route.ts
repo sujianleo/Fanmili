@@ -45,10 +45,14 @@ function publicHost(request: Request) {
     || new URL(request.url).host;
   try {
     const parsed = new URL(/^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`);
-    return isLocalHostname(parsed.hostname) ? "" : parsed.host;
+    return isLocalHostname(parsed.hostname) || isFnosRemoteHostname(parsed.hostname) ? "" : parsed.host;
   } catch {
     return "";
   }
+}
+
+function isFnosRemoteHostname(hostname: string) {
+  return hostname.toLowerCase().endsWith(".fnos.net");
 }
 
 function isLocalHostname(hostname: string) {

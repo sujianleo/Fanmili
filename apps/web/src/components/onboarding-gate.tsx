@@ -13,7 +13,8 @@ const settingsStorageKey = "family-app.settings.v1";
 type OnboardingStep = "welcome" | "network" | "ai" | "install";
 type ThemeFamily = "mono" | "dopamine";
 type InstallPlatform = "ios" | "android" | "desktop";
-type OnboardingProviderKind = "deepseek" | "kimi" | "qwen" | "zhipu" | "volcengine" | "hunyuan" | "gemini" | "anthropic" | "openai";
+type OnboardingProviderKind = "deepseek";
+type VerificationState = "idle" | "testing" | "passed" | "failed";
 
 const onboardingProviderPresets: Array<{
   deepModel: string;
@@ -22,15 +23,7 @@ const onboardingProviderPresets: Array<{
   kind: OnboardingProviderKind;
   label: string;
 }> = [
-  { kind: "deepseek", label: "DeepSeek", endpoint: "https://api.deepseek.com", deepModel: "deepseek-v4-pro", fastModel: "deepseek-v4-flash" },
-  { kind: "kimi", label: "Kimi", endpoint: "https://api.moonshot.cn/v1", deepModel: "kimi-k2.7-code", fastModel: "kimi-k2.7-code-highspeed" },
-  { kind: "qwen", label: "通义千问", endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1", deepModel: "qwen3.7-max", fastModel: "qwen3.6-flash" },
-  { kind: "zhipu", label: "智谱 GLM", endpoint: "https://open.bigmodel.cn/api/paas/v4", deepModel: "glm-5.2", fastModel: "glm-4.7-flashx" },
-  { kind: "volcengine", label: "火山方舟", endpoint: "https://ark.cn-beijing.volces.com/api/v3", deepModel: "doubao-seed-2-0-pro-260215", fastModel: "doubao-seed-2-0-lite-260215" },
-  { kind: "hunyuan", label: "腾讯混元", endpoint: "https://api.hunyuan.cloud.tencent.com/v1", deepModel: "hunyuan-turbos-latest", fastModel: "hunyuan-lite" },
-  { kind: "gemini", label: "Google Gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta/openai", deepModel: "gemini-3.1-pro-preview", fastModel: "gemini-3.5-flash" },
-  { kind: "anthropic", label: "Anthropic Claude", endpoint: "https://api.anthropic.com/v1", deepModel: "claude-opus-4-7", fastModel: "claude-sonnet-4-6" },
-  { kind: "openai", label: "OpenAI", endpoint: "https://api.openai.com/v1", deepModel: "gpt-5.2", fastModel: "gpt-5-mini" }
+  { kind: "deepseek", label: "DeepSeek", endpoint: "https://api.deepseek.com", deepModel: "deepseek-v4-pro", fastModel: "deepseek-v4-flash" }
 ];
 
 type StoredSettings = {
@@ -50,12 +43,15 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [step, setStep] = useState<OnboardingStep>("welcome");
   const [publicDomain, setPublicDomain] = useState("");
+  const [networkMessage, setNetworkMessage] = useState("");
   const [lanAddress, setLanAddress] = useState("");
   const [lanPort, setLanPort] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [aiVerification, setAiVerification] = useState<VerificationState>("idle");
+  const [aiMessage, setAiMessage] = useState("");
   const [themeFamily, setThemeFamily] = useState<ThemeFamily>("mono");
-  const [providerKind, setProviderKind] = useState<OnboardingProviderKind>("deepseek");
   const [installPlatform, setInstallPlatform] = useState<InstallPlatform>("desktop");
+  const providerKind: OnboardingProviderKind = "deepseek";
 
   useEffect(() => {
     let cancelled = false;
@@ -64,11 +60,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
       clearStoredNetworkAddressesOnce(window.localStorage);
       const storedSettings = JSON.parse(window.localStorage.getItem(settingsStorageKey) || "{}") as StoredSettings;
       const storedThemeFamily = storedSettings.themeFamily === "dopamine" ? "dopamine" : "mono";
-      const storedProviderKind = storedSettings.providers?.find((provider) =>
-        onboardingProviderPresets.some((preset) => preset.kind === provider.kind)
-      )?.kind;
       setThemeFamily(storedThemeFamily);
-      if (typeof storedProviderKind === "string") setProviderKind(storedProviderKind as OnboardingProviderKind);
       applyThemeFamily(storedThemeFamily);
       const onboarding = JSON.parse(window.localStorage.getItem(onboardingStorageKey) || "null") as { completed?: boolean } | null;
       if (onboarding?.completed) {
@@ -105,12 +97,49 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
     event.preventDefault();
     const domain = normalizePublicDomain(publicDomain);
     setPublicDomain(domain);
+    if (!domain) {
+      setNetworkMessage("请填写可直接打开的 HTTPS 公网地址；飞牛远程地址和局域网地址不能使用。");
+      return;
+    }
+    setNetworkMessage("");
     setLanAddress(normalizeLanAddress(lanAddress));
     setStep("ai");
   }
 
+  async function verifyAiAndContinue() {
+    const key = apiKey.trim();
+    if (!key || aiVerification === "testing") return;
+    const preset = onboardingProviderPresets[0];
+    setAiVerification("testing");
+    setAiMessage("正在验证 API，请稍候…");
+    try {
+      const response = await familyFetch("/api/ai-tuning", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          apiKey: key,
+          endpoint: preset.endpoint,
+          kind: preset.kind,
+          model: preset.fastModel
+        })
+      });
+      const payload = await response.json().catch(() => ({})) as { detail?: string; profile?: unknown };
+      if (!response.ok || !payload.profile) throw new Error(payload.detail || "API 验证失败，请检查 Key 后重试。");
+      setAiVerification("passed");
+      setAiMessage("API 已连接，可以继续。");
+      setStep("install");
+    } catch (error) {
+      setAiVerification("failed");
+      setAiMessage(error instanceof Error ? error.message : "API 验证失败，请检查 Key 后重试。");
+    }
+  }
+
   async function completeOnboarding() {
     const publicTarget = parsePublicTarget(publicDomain);
+    if (!publicTarget.host || !apiKey.trim() || aiVerification !== "passed") {
+      setStep(publicTarget.host ? "ai" : "network");
+      return;
+    }
     const normalizedLan = normalizeLanAddress(lanAddress);
     let storedSettings: StoredSettings = {};
     try {
@@ -158,6 +187,11 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
         {step === "welcome" ? (
           <div className={styles.welcome}>
             <Brand className={styles.welcomeBrand} isLite={isLite} />
+            <div className={styles.requirements}>
+              <strong>开始前请准备</strong>
+              <span>你自己的 Fanmili 公网地址</span>
+              <span>可用的 DeepSeek API Key</span>
+            </div>
             <div aria-label="选择配色" className={styles.themeChoice} role="group">
               <button
                 aria-pressed={themeFamily === "mono"}
@@ -184,42 +218,39 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
 
         {step === "network" ? (
           <form className={styles.form} onSubmit={continueFromNetwork}>
-            <StepHeader current={1} title="设置访问地址" />
+            <StepHeader current={1} title="填写公网地址" description="这是家人在外面打开 Fanmili 时使用的地址。" />
             <label className={styles.field}>
-              <span>公网地址</span>
-              <input autoCapitalize="none" autoCorrect="off" onChange={(event) => setPublicDomain(event.target.value)} placeholder="family.example.com" spellCheck={false} value={publicDomain} />
+              <span>公网地址 <em>必填</em></span>
+              <input autoCapitalize="none" autoCorrect="off" inputMode="url" onChange={(event) => {
+                setPublicDomain(event.target.value);
+                setNetworkMessage("");
+              }} placeholder="https://family.example.com" spellCheck={false} type="url" value={publicDomain} />
+              <small>请先确认这个地址能在手机流量网络中直接打开。不能填写 *.fnos.net、192.168.x.x 或其他局域网地址。</small>
             </label>
-            <label className={styles.field}>
-              <span>局域网地址 <em>可修改</em></span>
-              <input autoCapitalize="none" autoCorrect="off" onChange={(event) => setLanAddress(event.target.value)} placeholder="192.168.1.100" spellCheck={false} value={lanAddress} />
-            </label>
+            {networkMessage ? <p className={`${styles.verificationMessage} ${styles.verificationFailed}`} role="alert">{networkMessage}</p> : null}
             <div className={styles.actions}>
               <button className={styles.secondary} onClick={() => setStep("welcome")} type="button">返回</button>
-              <button className={styles.primary} type="submit">下一步</button>
+              <button className={styles.primary} disabled={!normalizePublicDomain(publicDomain)} type="submit">下一步</button>
             </div>
           </form>
         ) : null}
 
         {step === "ai" ? (
           <div className={styles.form}>
-            <StepHeader current={2} title="连接 AI" description="可选，稍后也能设置。" />
+            <StepHeader current={2} title="连接 AI" description="内测版必须连接可用的大模型 API。" />
             <label className={styles.field}>
-              <span>AI 提供商</span>
-              <select aria-label="AI 提供商" onChange={(event) => {
-                setProviderKind(event.target.value as OnboardingProviderKind);
-                setApiKey("");
-              }} value={providerKind}>
-                {onboardingProviderPresets.map((provider) => <option key={provider.kind} value={provider.kind}>{provider.label}</option>)}
-              </select>
-            </label>
-            <label className={styles.field}>
-              <span>{onboardingProviderPresets.find((provider) => provider.kind === providerKind)?.label} API Key <em>可选</em></span>
-              <input autoComplete="off" onChange={(event) => setApiKey(event.target.value)} placeholder="sk-••••••••" type="password" value={apiKey} />
+              <span>DeepSeek API Key <em>必填</em></span>
+              <input autoCapitalize="none" autoComplete="new-password" autoCorrect="off" onChange={(event) => {
+                setApiKey(event.target.value);
+                setAiVerification("idle");
+                setAiMessage("");
+              }} placeholder="sk-••••••••" spellCheck={false} type="password" value={apiKey} />
               <small>{isLite ? "加密保存在这台设备的 Fanmili 数据库中。" : "仅保存在当前浏览器。"}</small>
             </label>
+            {aiMessage ? <p className={`${styles.verificationMessage} ${aiVerification === "passed" ? styles.verificationPassed : styles.verificationFailed}`.trim()} role="status">{aiMessage}</p> : null}
             <div className={styles.actions}>
               <button className={styles.secondary} onClick={() => setStep("network")} type="button">返回</button>
-              <button className={styles.primary} onClick={() => setStep("install")} type="button">下一步</button>
+              <button className={styles.primary} disabled={!apiKey.trim() || aiVerification === "testing"} onClick={() => void verifyAiAndContinue()} type="button">{aiVerification === "testing" ? "正在验证…" : "验证并继续"}</button>
             </div>
           </div>
         ) : null}
@@ -297,7 +328,10 @@ function normalizePublicDomain(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
   try {
-    return new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`).host;
+    const target = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    return target.protocol !== "https:" || isUnsupportedPublicHostname(target.hostname)
+      ? ""
+      : target.origin;
   } catch {
     return "";
   }
@@ -310,11 +344,25 @@ type NetworkDefaults = {
 };
 
 function resolveInitialPublicDomain(storedPublicDomain = "") {
-  const stored = normalizePublicDomain(storedPublicDomain);
-  if (stored) return stored;
   const hostname = window.location.hostname;
-  if (!hostname || hostname === "localhost" || hostname.endsWith(".local") || isPrivateIpv4Address(hostname)) return "";
-  return window.location.host;
+  if (hostname && !isUnsupportedPublicHostname(hostname) && window.location.protocol === "https:") {
+    return window.location.origin;
+  }
+  return normalizePublicDomain(storedPublicDomain);
+}
+
+function isFnosRemoteHostname(hostname: string) {
+  return hostname.toLowerCase().endsWith(".fnos.net");
+}
+
+function isUnsupportedPublicHostname(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  return normalized === "localhost"
+    || normalized.endsWith(".local")
+    || isFnosRemoteHostname(normalized)
+    || normalized.includes(":")
+    || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized)
+    || !normalized.includes(".");
 }
 
 function normalizePort(value = "") {

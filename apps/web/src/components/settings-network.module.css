@@ -101,6 +101,17 @@
   box-shadow: none;
 }
 
+.publicAddressNote {
+  grid-column: 1 / -1;
+  margin: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-soft) 58%, var(--surface-tint));
+  color: var(--muted);
+  padding: 9px 10px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 .localControls {
   display: grid;
   min-height: 42px;

@@ -57,6 +57,19 @@
   padding: 0;
 }
 
+.requirements {
+  display: grid;
+  gap: 7px;
+  border: 1px solid #dededb;
+  border-radius: 18px;
+  padding: 16px 18px;
+  background: #fafaf8;
+  color: #666;
+  font-size: 13px;
+}
+.requirements strong { color: #111; }
+.requirements span::before { content: "✓"; margin-right: 8px; color: #315248; font-weight: 800; }
+
 .welcomeBrand {
   flex-direction: column;
   gap: 12px;
@@ -160,6 +173,7 @@
 .primary { background: #111; color: #fff; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14); }
 .primary:hover { background: #262626; }
 .primary:active { transform: translateY(1px); }
+.primary:disabled { cursor: not-allowed; opacity: 0.42; }
 .secondary { background: #efefed; color: #333; }
 
 .stepHeader { display: grid; gap: 9px; margin-bottom: 5px; }
@@ -188,6 +202,9 @@
 .field select:focus { border-color: #777; box-shadow: 0 0 0 4px rgba(17, 17, 17, 0.06); }
 .field input::placeholder { color: #aaa; }
 .field small { color: #888; font-size: 11px; line-height: 1.5; }
+.verificationMessage { margin: -4px 0 0; font-size: 12px; line-height: 1.55; }
+.verificationPassed { color: #315248; }
+.verificationFailed { color: #9a4438; }
 .installGuide {
   display: grid;
   gap: 8px;

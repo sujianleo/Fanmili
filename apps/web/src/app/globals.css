@@ -8707,7 +8707,37 @@ html[data-visual-theme="mono"] .theme-card.selected::after { background: #111; c
 .settings-detail-card > span,
 .settings-detail-card > small { color: var(--muted); font-size: 11px; line-height: 1.45; }
 .settings-detail-card > strong { color: var(--text-strong); font-size: 16px; }
+.about-api-notice { display: grid; gap: 3px; margin: 4px 0 0; border-radius: 13px; background: var(--accent-soft); padding: 11px 12px; }
+.about-api-notice b { color: var(--accent-strong); font-size: 11px; }
+.about-api-notice span { color: var(--text-strong); font-size: 11px; line-height: 1.55; }
 .settings-detail-primary { min-height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-strong); font-size: 12px; font-weight: 760; }
+.feedback-form { display: grid; gap: 12px; }
+.feedback-copy-field,
+.feedback-screenshot-field,
+.feedback-contact-card { display: grid; gap: 9px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 14px; }
+.feedback-copy-field > span,
+.feedback-screenshot-field > div > span,
+.feedback-contact-card > span { color: var(--text-strong); font-size: 13px; font-weight: 740; }
+.feedback-copy-field textarea { width: 100%; min-height: 126px; resize: vertical; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-tint); color: var(--text-strong); padding: 11px 12px; font: inherit; font-size: 13px; line-height: 1.55; outline: none; }
+.feedback-copy-field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.feedback-copy-field > small { justify-self: end; color: var(--muted); font-size: 10px; }
+.feedback-screenshot-field > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.feedback-screenshot-field > div > small { color: var(--muted); font-size: 10px; }
+.feedback-add-screenshot { min-height: 42px; border: 1px dashed var(--line-strong); border-radius: 13px; color: var(--accent-strong); font-size: 12px; font-weight: 720; }
+.feedback-add-screenshot:hover { background: var(--surface-tint); }
+.feedback-add-screenshot:disabled { cursor: default; opacity: .45; }
+.feedback-preview-grid { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px !important; }
+.feedback-preview-grid figure { position: relative; overflow: hidden; aspect-ratio: 1; margin: 0; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-tint); }
+.feedback-preview-grid img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.feedback-preview-grid figure button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 999px; background: color-mix(in srgb, #111 76%, transparent); color: #fff; font-size: 17px; line-height: 1; }
+.feedback-contact-card > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.feedback-contact-card a { color: var(--accent-strong); overflow-wrap: anywhere; }
+.feedback-contact-card > div > a { font-size: 13px; font-weight: 720; }
+.feedback-contact-card > div > button { flex: none; min-width: 48px; min-height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent-strong); font-size: 11px; font-weight: 720; }
+.feedback-contact-card > small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.feedback-submit { width: 100%; background: var(--accent-strong); color: #fff; }
+.feedback-submit:disabled { opacity: .55; }
+.feedback-message { margin: -2px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 
 html[data-color-scheme="dark"] :where(.settings-segmented button, .compact-field span) { color: #a9a5ad; }
 html[data-color-scheme="dark"] :where(.compact-field input, .compact-field select, .provider-head select) { color: #f6f3f7; }

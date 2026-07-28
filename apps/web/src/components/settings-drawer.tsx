@@ -18,7 +18,7 @@ import navStyles from "./settings-nav.module.css";
 import networkStyles from "./settings-network.module.css";
 
 type SettingsSection = "appearance" | "network" | "ai" | "members" | "general";
-type GeneralDetail = "storage" | "about";
+type GeneralDetail = "storage" | "feedback" | "about";
 type ThemeFamily = "mono" | "dopamine";
 type ThemeMode = "auto" | "light" | "dark";
 type NetworkMode = "internet" | "local" | "auto";
@@ -550,8 +550,10 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
       }
       if (stored.networkMode) setNetworkMode(stored.networkMode);
       if (stored.activeNetwork === "internet" || stored.activeNetwork === "local") setActiveNetwork(stored.activeNetwork);
-      if (typeof stored.serverUrl === "string") setServerUrl(stored.serverUrl);
-      if (typeof stored.serverPort === "string") setServerPort(stored.serverPort);
+      if (typeof stored.serverUrl === "string" && !isFnosRemoteAddress(stored.serverUrl)) {
+        setServerUrl(stored.serverUrl);
+        if (typeof stored.serverPort === "string") setServerPort(stored.serverPort);
+      }
       if (stored.lanIp) setLanIp(stored.lanIp);
       if (typeof stored.lanPort === "string") setLanPort(stored.lanPort);
       setProviders(normalizeStoredProviders(stored.providers));
@@ -991,6 +993,7 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
                       onHostChange={(value) => { setServerUrl(value); setInternetConnectivity({ status: "idle" }); }}
                       onPortChange={(value) => { setServerPort(value); setInternetConnectivity({ status: "idle" }); }}
                     />
+                    {!serverUrl ? <p className={networkStyles.publicAddressNote}>未检测到可直接打开的公网地址。飞牛远程入口需先登录 fnOS 再打开 Fanmili；如需复制即开，请配置独立反向代理域名。</p> : null}
                     <ConnectivityButton label="公网" test={internetConnectivity} onTest={() => void testConnectivity(() => buildConnectivityTarget(serverUrl, serverPort), setInternetConnectivity)} />
                   </ConnectionCard>
                   <ConnectionCard
@@ -1107,7 +1110,8 @@ export function SettingsDrawer({ currentMemberId, isFamilyAdmin, members, open, 
                       <SettingCard compact title="数据同步" description="在你的设备之间保持最新。"><ToggleRow label="自动同步" checked={sync} onChange={setSync} /></SettingCard>
                       <div className="general-link-list">
                         <button onClick={() => void openGeneralDetail("storage")} type="button"><span><b>存储管理</b><small>查看本机网页数据占用</small></span><i>›</i></button>
-                        <button onClick={() => void openGeneralDetail("about")} type="button"><span><b>关于 Fanmili</b><small>版本 1.0.0</small></span><i>›</i></button>
+                        <button onClick={() => void openGeneralDetail("feedback")} type="button"><span><b>意见反馈</b><small>发送文字和截图</small></span><i>›</i></button>
+                        <button onClick={() => void openGeneralDetail("about")} type="button"><span><b>关于 Fanmili</b><small>版本 1.0.3</small></span><i>›</i></button>
                       </div>
                       {isFamilyAuthRequired() ? <button className="settings-signout-button" type="button" onClick={onSignOut}>退出账号</button> : null}
                     </>
@@ -1375,7 +1379,7 @@ function GeneralSettingsDetail({
   onBack: () => void;
   storageEstimate: { quota?: number; usage?: number } | null;
 }) {
-  const title = detail === "storage" ? "存储管理" : "关于 Fanmili";
+  const title = detail === "storage" ? "存储管理" : detail === "feedback" ? "意见反馈" : "关于 Fanmili";
   return (
     <section aria-label={`${title}详情`} className="settings-general-detail">
       <header>
@@ -1389,13 +1393,195 @@ function GeneralSettingsDetail({
           <small>{storageEstimate?.quota ? `可用配额 ${formatStorageBytes(storageEstimate.quota)}` : "浏览器未提供存储配额详情"}</small>
         </div>
       ) : null}
+      {detail === "feedback" ? <FeedbackSettingsDetail /> : null}
       {detail === "about" ? (
         <div className="settings-detail-card">
-          <strong>Fanmili 1.0.0</strong>
+          <strong>Fanmili 1.0.3</strong>
           <small>爱上记录，守护家庭。</small>
+          <p className="about-api-notice"><b>使用提示</b><span>Fanmili 不内置大模型；使用 AI 功能前，必须先在设置中配置可用的大模型 API。</span></p>
         </div>
       ) : null}
     </section>
+  );
+}
+
+const feedbackEmail = "1219611671@qq.com";
+const feedbackGitHubUrl = "https://github.com/sujianleo/Fanmili";
+const maxFeedbackScreenshots = 4;
+const maxFeedbackScreenshotBytes = 10 * 1024 * 1024;
+
+type FeedbackScreenshot = {
+  file: File;
+  id: string;
+  previewUrl: string;
+};
+
+function FeedbackSettingsDetail() {
+  const [feedbackText, setFeedbackText] = useState("");
+  const [screenshots, setScreenshots] = useState<FeedbackScreenshot[]>([]);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [sharing, setSharing] = useState(false);
+  const screenshotInputRef = useRef<HTMLInputElement | null>(null);
+  const previewUrlsRef = useRef(new Set<string>());
+
+  useEffect(() => () => {
+    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrlsRef.current.clear();
+  }, []);
+
+  function addScreenshots(files: FileList | null) {
+    if (!files?.length) return;
+    const availableSlots = maxFeedbackScreenshots - screenshots.length;
+    const accepted = Array.from(files)
+      .filter((file) => file.type.startsWith("image/") && file.size <= maxFeedbackScreenshotBytes)
+      .slice(0, Math.max(0, availableSlots));
+
+    if (!accepted.length) {
+      setFeedbackMessage(availableSlots <= 0 ? `最多添加 ${maxFeedbackScreenshots} 张截图。` : "请选择 10 MB 以内的图片。");
+      return;
+    }
+
+    const next = accepted.map((file, index) => {
+      const previewUrl = URL.createObjectURL(file);
+      previewUrlsRef.current.add(previewUrl);
+      return {
+        file,
+        id: `${file.name}-${file.lastModified}-${file.size}-${index}`,
+        previewUrl
+      };
+    });
+    setScreenshots((current) => [...current, ...next]);
+    setFeedbackMessage(accepted.length < files.length ? `已添加 ${accepted.length} 张；最多 ${maxFeedbackScreenshots} 张，且单张不超过 10 MB。` : "");
+  }
+
+  function removeScreenshot(id: string) {
+    setScreenshots((current) => current.filter((item) => {
+      if (item.id !== id) return true;
+      URL.revokeObjectURL(item.previewUrl);
+      previewUrlsRef.current.delete(item.previewUrl);
+      return false;
+    }));
+    setFeedbackMessage("");
+  }
+
+  async function submitFeedback(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const description = feedbackText.trim();
+    if (!description && screenshots.length === 0) {
+      setFeedbackMessage("请填写反馈内容或添加截图。");
+      return;
+    }
+
+    const subject = "Fanmili 意见反馈";
+    const body = [
+      "Fanmili 意见反馈",
+      "",
+      description || "（反馈见截图）",
+      "",
+      "应用版本：1.0.3",
+      `项目地址：${feedbackGitHubUrl}`
+    ].join("\n");
+    const files = screenshots.map((item) => item.file);
+    const sharePayload = { files, text: `${body}\n\n联系邮箱：${feedbackEmail}`, title: subject };
+    const canShareFiles = files.length > 0
+      && typeof navigator.canShare === "function"
+      && navigator.canShare(sharePayload);
+
+    setSharing(true);
+    setFeedbackMessage("");
+    try {
+      if (typeof navigator.share === "function" && (files.length === 0 || canShareFiles)) {
+        await navigator.share(files.length ? sharePayload : { text: sharePayload.text, title: subject });
+        setFeedbackMessage(`已交给系统分享，请发送至 ${feedbackEmail}。`);
+        return;
+      }
+
+      window.location.href = `mailto:${feedbackEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      setFeedbackMessage(files.length
+        ? `邮件草稿已打开，请将已选的 ${files.length} 张截图加入附件后发送。`
+        : "邮件草稿已打开，请确认后发送。");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setFeedbackMessage("已取消发送，内容仍保留在这里。");
+      } else {
+        setFeedbackMessage(`暂时无法打开分享，请直接邮件联系 ${feedbackEmail}。`);
+      }
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function copyFeedbackEmail() {
+    try {
+      await navigator.clipboard.writeText(feedbackEmail);
+      setFeedbackMessage("邮箱已复制。");
+    } catch {
+      setFeedbackMessage(`请手动复制邮箱：${feedbackEmail}`);
+    }
+  }
+
+  return (
+    <form className="feedback-form" onSubmit={submitFeedback}>
+      <label className="feedback-copy-field">
+        <span>反馈内容</span>
+        <textarea
+          maxLength={2000}
+          onChange={(event) => setFeedbackText(event.target.value)}
+          placeholder="请描述遇到的问题、期望效果或建议…"
+          rows={6}
+          value={feedbackText}
+        />
+        <small>{feedbackText.length}/2000</small>
+      </label>
+
+      <div className="feedback-screenshot-field">
+        <div>
+          <span>截图</span>
+          <small>最多 4 张，单张不超过 10 MB</small>
+        </div>
+        <input
+          accept="image/png,image/jpeg,image/webp,image/avif"
+          aria-label="选择反馈截图"
+          hidden
+          multiple
+          onChange={(event) => {
+            addScreenshots(event.currentTarget.files);
+            event.currentTarget.value = "";
+          }}
+          ref={screenshotInputRef}
+          type="file"
+        />
+        <button
+          className="feedback-add-screenshot"
+          disabled={screenshots.length >= maxFeedbackScreenshots}
+          onClick={() => screenshotInputRef.current?.click()}
+          type="button"
+        >
+          ＋ 选择截图
+        </button>
+        {screenshots.length ? (
+          <div className="feedback-preview-grid">
+            {screenshots.map((item, index) => (
+              <figure key={item.id}>
+                <img alt={`反馈截图 ${index + 1}`} src={item.previewUrl} />
+                <button aria-label={`移除反馈截图 ${index + 1}`} onClick={() => removeScreenshot(item.id)} type="button">×</button>
+              </figure>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="feedback-contact-card">
+        <span>联系方式</span>
+        <div><a href={`mailto:${feedbackEmail}`}>{feedbackEmail}</a><button onClick={() => void copyFeedbackEmail()} type="button">复制</button></div>
+        <small>GitHub：<a href={feedbackGitHubUrl} rel="noreferrer" target="_blank">github.com/sujianleo/Fanmili</a></small>
+      </div>
+
+      <button className="settings-detail-primary feedback-submit" disabled={sharing} type="submit">
+        {sharing ? "正在打开分享…" : "发送反馈"}
+      </button>
+      {feedbackMessage ? <p aria-live="polite" className="feedback-message" role="status">{feedbackMessage}</p> : null}
+    </form>
   );
 }
 
@@ -1464,9 +1650,20 @@ function parseNetworkDefaultEndpoint(value: string) {
   if (!trimmed) return { host: "", port: "" };
   try {
     const target = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
-    return { host: target.hostname, port: target.port };
+    return isFnosRemoteAddress(target.hostname) ? { host: "", port: "" } : { host: target.hostname, port: target.port };
   } catch {
     return { host: "", port: "" };
+  }
+}
+
+function isFnosRemoteAddress(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  try {
+    const target = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    return target.hostname.toLowerCase().endsWith(".fnos.net");
+  } catch {
+    return trimmed.toLowerCase().split(":")[0]?.endsWith(".fnos.net") || false;
   }
 }
 

@@ -43,6 +43,10 @@ export FAMILY_APP_SQLITE_PATH
 export FAMILY_APP_ALLOW_FILE_FALLBACK
 export FAMILY_APP_DEMO_DATA
 
+if [ "$(id -u)" -eq 0 ]; then
+  chown -R nextjs:nodejs "$data_root"
+fi
+
 start_with_fnos_gateway() {
   gateway_socket=$FAMILY_FNOS_GATEWAY_SOCKET
   if [ "$(id -u)" -eq 0 ]; then
@@ -72,7 +76,6 @@ if [ -n "${FAMILY_FNOS_GATEWAY_SOCKET:-}" ]; then
 fi
 
 if [ "$(id -u)" -eq 0 ]; then
-  chown -R nextjs:nodejs "$data_root"
   exec su-exec nextjs:nodejs "$@"
 fi
 
